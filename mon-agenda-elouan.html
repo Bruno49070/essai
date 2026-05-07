@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="theme-color" content="#1a1040"/>
+<title>Mon Agenda 🗓️</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0;}
+body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#1a3a5c 100%);font-family:'Baloo 2',cursive;padding:22px 14px 50px;}
+.header{text-align:center;margin-bottom:24px;}
+.header h1{font-size:32px;font-weight:900;background:linear-gradient(90deg,#FFEAA7,#FF9F43,#FF6B6B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header p{color:rgba(255,255,255,0.5);font-size:14px;margin-top:4px;}
+#btn-add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:20px;border:2.5px dashed rgba(255,255,255,0.35);background:rgba(255,255,255,0.07);cursor:pointer;margin-bottom:20px;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:rgba(255,255,255,0.85);}
+.card{border-radius:26px;padding:20px 16px 16px;border:2px solid rgba(255,255,255,0.35);position:relative;overflow:hidden;margin-bottom:16px;}
+/* Bouton cadenas */
+.btn-lock{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+/* Boutons modifier/supprimer cachés par défaut */
+.card-actions{position:absolute;top:12px;right:12px;display:none;gap:6px;}
+.card-actions.visible{display:flex;}
+.card-actions button{background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+/* Barre décompte déverrouillage */
+.unlock-bar-wrap{display:none;height:4px;background:rgba(255,255,255,0.2);border-radius:99px;margin-top:10px;overflow:hidden;}
+.unlock-bar-wrap.visible{display:block;}
+.unlock-bar{height:100%;border-radius:99px;background:rgba(255,255,255,0.8);width:100%;transition:width 30s linear;}
+.card-main{display:flex;align-items:center;gap:14px;margin-top:4px;}
+.card-info{flex:1;min-width:0;}
+.card-name{font-size:20px;font-weight:800;color:white;line-height:1.2;margin-bottom:5px;word-break:break-word;}
+.card-date{color:rgba(255,255,255,0.85);font-size:13px;font-weight:600;margin-bottom:8px;}
+.card-counter{background:rgba(255,255,255,0.22);border-radius:14px;padding:6px 12px;display:inline-block;font-weight:900;color:white;}
+.bar-track{height:12px;border-radius:99px;background:rgba(255,255,255,0.2);overflow:hidden;margin-top:14px;}
+.bar-fill{height:100%;border-radius:99px;background:rgba(255,255,255,0.75);}
+.bar-labels{display:flex;justify-content:space-between;margin-top:3px;}
+.bar-labels span{color:rgba(255,255,255,0.6);font-size:10px;}
+.btn-speak{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px;border-radius:18px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:white;}
+/* Overlay formulaire événement */
+.overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.75);z-index:100;overflow-y:auto;padding:20px;}
+.overlay.open{display:block;}
+.modal{background:white;border-radius:28px;padding:24px;max-width:460px;width:100%;margin:0 auto;}
+.tabs{display:flex;gap:8px;margin-bottom:22px;justify-content:center;}
+.tab{padding:7px 16px;border-radius:99px;border:none;cursor:pointer;font-family:'Baloo 2',cursive;font-weight:700;font-size:13px;background:#f0f0f0;color:#777;}
+.section{display:none;}
+.section.active{display:block;}
+.section h3{font-family:'Baloo 2',cursive;text-align:center;margin-bottom:14px;color:#333;font-size:20px;}
+.preview{text-align:center;font-size:60px;margin:8px 0 14px;}
+.emoji-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-bottom:12px;}
+.emoji-btn{font-size:24px;border-radius:12px;padding:4px;cursor:pointer;border:3px solid transparent;background:#f5f5f5;line-height:1;}
+.palette{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px;}
+.color-btn{width:36px;height:36px;border-radius:50%;border:3px solid transparent;cursor:pointer;}
+input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;border-radius:16px;font-family:'Baloo 2',cursive;font-size:17px;outline:none;box-sizing:border-box;color:#333;border:2px solid #ddd;margin-bottom:12px;display:block;}
+.check-label{display:flex;align-items:center;gap:10px;cursor:pointer;font-family:'Baloo 2',cursive;font-size:16px;color:#555;margin-bottom:12px;}
+.check-label input{width:22px;height:22px;cursor:pointer;}
+.form-nav{display:flex;gap:8px;margin-top:20px;}
+.btn-prev{flex:1;padding:13px;border-radius:16px;border:2px solid #ddd;background:white;cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:#666;}
+.btn-main{flex:2;padding:13px;border-radius:16px;border:none;cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
+.btn-close{padding:13px 16px;border-radius:16px;border:2px solid #ddd;background:white;cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:#aaa;}
+.empty{text-align:center;margin-top:50px;}
+.empty .big{font-size:72px;}
+.empty p{color:rgba(255,255,255,0.4);font-size:17px;margin-top:10px;}
+
+/* ── Overlay PIN ───────────────────────────────────────────── */
+.pin-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.85);z-index:200;align-items:center;justify-content:center;padding:20px;}
+.pin-overlay.open{display:flex;}
+.pin-modal{background:white;border-radius:28px;padding:28px 24px 24px;max-width:300px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
+.pin-title{font-family:'Baloo 2',cursive;font-size:22px;font-weight:800;color:#333;margin-bottom:4px;}
+.pin-sub{font-family:'Baloo 2',cursive;font-size:14px;color:#999;margin-bottom:22px;}
+.pin-dots{display:flex;justify-content:center;gap:14px;margin-bottom:24px;}
+.pin-dot{width:20px;height:20px;border-radius:50%;background:#eee;border:2px solid #ddd;transition:all 0.15s;}
+.pin-dot.filled{background:#6C5CE7;border-color:#6C5CE7;}
+.pin-dot.error{background:#FF6B6B;border-color:#FF6B6B;animation:shake 0.3s;}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.pin-num{padding:16px 10px;border-radius:18px;border:none;background:#f5f5f5;cursor:pointer;font-family:'Baloo 2',cursive;font-size:28px;font-weight:800;color:#333;transition:background 0.12s;width:100%;}
+.pin-num:active{background:#e0e0e0;}
+.pin-del{padding:16px 10px;border-radius:18px;border:none;background:#fff0f0;cursor:pointer;font-size:22px;width:100%;transition:background 0.12s;}
+.pin-del:active{background:#ffe0e0;}
+.pin-cancel-btn{width:100%;padding:12px;border-radius:16px;border:2px solid #eee;background:white;cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:#aaa;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:52px">🗓️</div>
+  <h1>Mon Agenda</h1>
+  <p>Appuie sur 🔊 pour écouter !</p>
+</div>
+
+<button id="btn-add" onclick="openForm()">
+  <span style="font-size:26px">＋</span> Ajouter un événement
+</button>
+
+<div id="list"></div>
+<div class="empty" id="empty" style="display:none">
+  <div class="big">🌈</div>
+  <p>Aucun événement.<br>Ajoutes-en un ! 👆</p>
+</div>
+
+<!-- Overlay formulaire -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="tabs">
+      <button class="tab" id="tab0" onclick="goTab(0)">1. Icône</button>
+      <button class="tab" id="tab1" onclick="goTab(1)">2. Nom</button>
+      <button class="tab" id="tab2" onclick="goTab(2)">3. Date</button>
+    </div>
+    <div class="section" id="sec0">
+      <h3>Choisis une icône 🎨</h3>
+      <div class="emoji-grid" id="emoji-grid"></div>
+      <div class="preview" id="prev0">🎂</div>
+      <h3 style="font-size:16px;margin-bottom:8px">Couleur</h3>
+      <div class="palette" id="palette"></div>
+    </div>
+    <div class="section" id="sec1">
+      <h3>Nom de l'événement ✍️</h3>
+      <div class="preview" id="prev1">🎂</div>
+      <input type="text" id="inp-name" placeholder="Ex : Anniversaire d'Elouan"/>
+    </div>
+    <div class="section" id="sec2">
+      <h3>Quelle date ? 📅</h3>
+      <div class="preview" id="prev2">🎂</div>
+      <input type="date" id="inp-date"/>
+      <label class="check-label">
+        <input type="checkbox" id="inp-usetime"/>
+        Ajouter une heure ⏰
+      </label>
+      <input type="time" id="inp-time" style="display:none"/>
+    </div>
+    <div class="form-nav">
+      <button class="btn-prev" id="btn-prev" style="display:none" onclick="prevTab()">← Retour</button>
+      <button class="btn-main" id="btn-main" onclick="nextOrSave()">Suivant →</button>
+      <button class="btn-close" onclick="closeForm()">✕</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay PIN -->
+<div class="pin-overlay" id="pin-overlay">
+  <div class="pin-modal">
+    <div class="pin-title">🔐 Code secret</div>
+    <div class="pin-sub">Entre le code pour modifier</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+    <div class="pin-grid">
+      <button class="pin-num" onclick="pinPress('1')">1</button>
+      <button class="pin-num" onclick="pinPress('2')">2</button>
+      <button class="pin-num" onclick="pinPress('3')">3</button>
+      <button class="pin-num" onclick="pinPress('4')">4</button>
+      <button class="pin-num" onclick="pinPress('5')">5</button>
+      <button class="pin-num" onclick="pinPress('6')">6</button>
+      <button class="pin-num" onclick="pinPress('7')">7</button>
+      <button class="pin-num" onclick="pinPress('8')">8</button>
+      <button class="pin-num" onclick="pinPress('9')">9</button>
+      <div></div>
+      <button class="pin-num" onclick="pinPress('0')">0</button>
+      <button class="pin-del" onclick="pinDel()">⌫</button>
+    </div>
+    <button class="pin-cancel-btn" onclick="closePIN()">Annuler</button>
+  </div>
+</div>
+
+<script>
+const PALETTE=["#FF6B6B","#FF9F43","#FFEAA7","#55EFC4","#74B9FF","#A29BFE","#FD79A8","#00CEC9","#FDCB6E","#6C5CE7"];
+const EMOJIS=["🎂","🎁","🎉","🎈","🏖️","✈️","🎄","🎃","🏕️","🎡","🏊","⛷️","🎠","🎪","🦁","🐘","🎮","🌴","🌟","🎤","🎬","🎭","🍦","🏆","⚽","🚂","🌈","🌙","🐶","🐱","🦋","🌸","🍕","🎯","🧸","🚀","🐠","🦄","🏰","🌊"];
+const MOIS=["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const PIN_CODE="0110";
+
+let events=JSON.parse(localStorage.getItem("elouan")||"[]");
+let editId=null,curTab=0,selEmoji="🎂",selColor=PALETTE[0];
+let unlocked=false,unlockTimer=null,barTimer=null;
+let pinInput="",pinTargetId=null;
+
+// ── Grilles ──────────────────────────────────────────────────────────────────
+(function(){
+  const g=document.getElementById("emoji-grid");
+  EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="emoji-btn";b.textContent=e;b.addEventListener("click",()=>pickEmoji(e));g.appendChild(b);});
+  const p=document.getElementById("palette");
+  PALETTE.forEach(c=>{const b=document.createElement("button");b.className="color-btn";b.style.background=c;b.addEventListener("click",()=>pickColor(c));p.appendChild(b);});
+  document.getElementById("inp-usetime").addEventListener("change",function(){
+    document.getElementById("inp-time").style.display=this.checked?"block":"none";
+  });
+})();
+
+function saveLS(){localStorage.setItem("elouan",JSON.stringify(events));}
+
+function getDays(ds,ts){const t=ts?new Date(ds+"T"+ts):(()=>{const d=new Date(ds);d.setHours(0,0,0,0);return d;})();return(t-Date.now())/86400000;}
+function getPct(ca,ds,ts){const c=new Date(ca),t=ts?new Date(ds+"T"+ts):(()=>{const d=new Date(ds);d.setHours(0,0,0,0);return d;})();return Math.min(100,Math.max(0,(Date.now()-c)/(t-c)*100));}
+function fmtDate(s){const[y,m,d]=s.split("-");return`${parseInt(d)} ${MOIS[parseInt(m)-1]} ${y}`;}
+function dLabel(days,past){if(past)return"C'est passé !";if(days<1)return"Aujourd'hui !";if(days<2)return"Demain !";return`${Math.ceil(days)} jours`;}
+function phrase(days){
+  if(days<=0)return"C'est aujourd'hui ! Quelle journée spéciale !";
+  if(days<1)return"Plus que quelques heures ! Ca arrive tres bientot !";
+  if(days<2)return"Plus qu'un dodo ! Demain c'est le grand jour !";
+  if(days<3)return"Encore deux dodos et c'est la !";
+  if(days<7)return`C'est dans ${Math.ceil(days)} dodos. Ca approche !`;
+  if(days<14)return"Plus qu'une petite semaine ! Ca se rapproche vite !";
+  if(days<30)return`C'est dans ${Math.ceil(days)} jours. Bientot !`;
+  if(days<60)return`C'est dans environ ${Math.round(days/7)} semaines. Encore un peu de patience !`;
+  if(days<120)return`C'est dans ${Math.round(days/30)} mois. Ca viendra !`;
+  if(days<240)return"C'est encore dans longtemps. Il faut patienter !";
+  return"C'est dans tres longtemps. Il faut beaucoup de patience !";
+}
+function speak(text,btn){
+  if(!window.speechSynthesis)return;
+  speechSynthesis.cancel();
+  if(btn)btn.textContent="🔊 En cours…";
+  setTimeout(()=>{
+    const u=new SpeechSynthesisUtterance(text);
+    u.lang="fr-FR";u.rate=0.88;u.pitch=1.1;
+    const v=speechSynthesis.getVoices().find(x=>x.lang.startsWith("fr"));
+    if(v)u.voice=v;
+    const done=()=>{if(btn)btn.textContent="🔊 Appuie pour écouter !";};
+    const kl=setInterval(()=>{if(!speechSynthesis.speaking){clearInterval(kl);return;}speechSynthesis.pause();speechSynthesis.resume();},8000);
+    u.onend=()=>{clearInterval(kl);done();};u.onerror=()=>{clearInterval(kl);done();};
+    speechSynthesis.resume();speechSynthesis.speak(u);
+  },150);
+}
+function arc(pct,emoji,sz=110){
+  const r=(sz-16)/2,cx=sz/2,cy=sz/2,c=2*Math.PI*r;
+  return`<svg width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" stroke-width="10"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(pct/100)*c} ${c}" transform="rotate(-90 ${cx} ${cy})"/><text x="${cx}" y="${cy+3}" text-anchor="middle" dominant-baseline="middle" font-size="${sz*0.3}">${emoji}</text><text x="${cx}" y="${cy+r-5}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="800">${Math.round(pct)}%</text></svg>`;
+}
+
+// ── PIN ───────────────────────────────────────────────────────────────────────
+function openPIN(id){
+  pinInput="";pinTargetId=id;
+  updatePinDots(false);
+  document.getElementById("pin-overlay").classList.add("open");
+}
+function closePIN(){
+  document.getElementById("pin-overlay").classList.remove("open");
+  pinInput="";
+}
+function pinPress(n){
+  if(pinInput.length>=4)return;
+  pinInput+=n;
+  updatePinDots(false);
+  if(pinInput.length===4){
+    if(pinInput===PIN_CODE){
+      closePIN();
+      unlock();
+    } else {
+      // Erreur : secouer et réinitialiser
+      updatePinDots(true);
+      setTimeout(()=>{pinInput="";updatePinDots(false);},800);
+    }
+  }
+}
+function pinDel(){if(pinInput.length>0){pinInput=pinInput.slice(0,-1);updatePinDots(false);}}
+function updatePinDots(error){
+  for(let i=0;i<4;i++){
+    const d=document.getElementById("d"+i);
+    d.className="pin-dot"+(i<pinInput.length?" "+(error?"error":"filled"):"");
+  }
+}
+
+// ── Déverrouillage 30s ────────────────────────────────────────────────────────
+function unlock(){
+  unlocked=true;
+  clearTimeout(unlockTimer);
+  // Afficher les boutons et la barre sur toutes les cartes
+  document.querySelectorAll(".card-actions").forEach(el=>el.classList.add("visible"));
+  document.querySelectorAll(".btn-lock").forEach(el=>el.style.display="none");
+  // Barre de décompte
+  document.querySelectorAll(".unlock-bar-wrap").forEach(el=>{
+    el.classList.add("visible");
+    const bar=el.querySelector(".unlock-bar");
+    bar.style.transition="none";bar.style.width="100%";
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition="width 30s linear";bar.style.width="0%";}));
+  });
+  // Reverrouiller après 30s
+  unlockTimer=setTimeout(lock,30000);
+}
+function lock(){
+  unlocked=false;
+  document.querySelectorAll(".card-actions").forEach(el=>el.classList.remove("visible"));
+  document.querySelectorAll(".btn-lock").forEach(el=>el.style.display="flex");
+  document.querySelectorAll(".unlock-bar-wrap").forEach(el=>el.classList.remove("visible"));
+}
+
+// ── Rendu ─────────────────────────────────────────────────────────────────────
+function render(){
+  const list=document.getElementById("list"),empty=document.getElementById("empty");
+  const sorted=[...events].sort((a,b)=>getDays(a.date,a.time)-getDays(b.date,b.time));
+  if(!sorted.length){list.innerHTML="";empty.style.display="block";return;}
+  empty.style.display="none";
+  list.innerHTML=sorted.map(ev=>{
+    const days=getDays(ev.date,ev.time),past=days<=0,pct=getPct(ev.createdAt,ev.date,ev.time),c=ev.color;
+    return`<div class="card" style="background:linear-gradient(135deg,${c}ee,${c}88);box-shadow:0 8px 28px ${c}55;">
+      <button class="btn-lock" onclick="openPIN('${ev.id}')" style="${unlocked?'display:none':'display:flex'}">🔒</button>
+      <div class="card-actions${unlocked?' visible':''}">
+        <button onclick="openEdit('${ev.id}')">✏️</button>
+        <button onclick="delEv('${ev.id}')">🗑️</button>
+      </div>
+      <div class="card-main">
+        <div>${arc(pct,ev.emoji)}</div>
+        <div class="card-info">
+          <div class="card-name">${ev.name}</div>
+          <div class="card-date">📅 ${fmtDate(ev.date)}${ev.time?' à '+ev.time:''}</div>
+          <div class="card-counter" style="font-size:${past?15:24}px">${dLabel(days,past)}</div>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+      <div class="bar-labels"><span>Début</span><span>🎯 Jour J</span></div>
+      <div class="unlock-bar-wrap${unlocked?' visible':''}"><div class="unlock-bar"></div></div>
+      <button class="btn-speak" id="sp-${ev.id}" onclick="speakEv('${ev.id}')">🔊 Appuie pour écouter !</button>
+    </div>`;
+  }).join("");
+  // Si déjà déverrouillé, relancer la barre sur les nouvelles cartes
+  if(unlocked) setTimeout(()=>{
+    document.querySelectorAll(".unlock-bar-wrap").forEach(el=>{el.classList.add("visible");});
+  },50);
+}
+
+function speakEv(id){const ev=events.find(e=>e.id===id);if(!ev)return;speak(ev.name+". "+phrase(getDays(ev.date,ev.time)),document.getElementById("sp-"+id));}
+function delEv(id){
+  if(!confirm("Supprimer cet événement ?"))return;
+  events=events.filter(e=>e.id!==id);saveLS();render();
+}
+
+// ── Formulaire ────────────────────────────────────────────────────────────────
+function openForm(ev){
+  editId=ev?ev.id:null;selEmoji=ev?.emoji||"🎂";selColor=ev?.color||PALETTE[0];
+  document.getElementById("inp-name").value=ev?.name||"";
+  document.getElementById("inp-date").value=ev?.date||"";
+  document.getElementById("inp-date").min=new Date().toISOString().split("T")[0];
+  document.getElementById("inp-usetime").checked=!!ev?.time;
+  document.getElementById("inp-time").value=ev?.time||"";
+  document.getElementById("inp-time").style.display=ev?.time?"block":"none";
+  refreshEmoji();refreshColor();goTab(0);
+  document.getElementById("overlay").classList.add("open");
+}
+function openEdit(id){openForm(events.find(e=>e.id===id));}
+function closeForm(){document.getElementById("overlay").classList.remove("open");}
+function pickEmoji(e){selEmoji=e;refreshEmoji();}
+function pickColor(c){selColor=c;refreshColor();}
+function refreshEmoji(){
+  ["prev0","prev1","prev2"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=selEmoji;});
+  document.querySelectorAll(".emoji-btn").forEach(b=>{const a=b.textContent===selEmoji;b.style.background=a?selColor:"#f5f5f5";b.style.borderColor=a?selColor:"transparent";});
+}
+function refreshColor(){
+  document.querySelectorAll(".color-btn").forEach(b=>{b.style.outline=b.style.background===selColor?"3px solid #333":"3px solid transparent";});
+  ["tab0","tab1","tab2"].forEach(id=>{const el=document.getElementById(id);if(el.classList.contains("active"))el.style.background=selColor;});
+  document.getElementById("btn-main").style.background=selColor;
+}
+function goTab(i){
+  curTab=i;
+  ["sec0","sec1","sec2"].forEach((id,idx)=>{document.getElementById(id).className="section"+(idx===i?" active":"");});
+  ["tab0","tab1","tab2"].forEach((id,idx)=>{
+    const el=document.getElementById(id),active=idx===i;
+    active?el.classList.add("active"):el.classList.remove("active");
+    el.style.background=active?selColor:"#f0f0f0";el.style.color=active?"white":"#777";
+  });
+  document.getElementById("btn-prev").style.display=i>0?"inline-block":"none";
+  const m=document.getElementById("btn-main");m.textContent=i<2?"Suivant →":"✅ Enregistrer";m.style.background=selColor;
+}
+function prevTab(){if(curTab>0)goTab(curTab-1);}
+function nextOrSave(){
+  if(curTab<2){goTab(curTab+1);return;}
+  const name=document.getElementById("inp-name").value.trim()||"Mon événement";
+  const date=document.getElementById("inp-date").value;
+  const useT=document.getElementById("inp-usetime").checked;
+  const time=useT?document.getElementById("inp-time").value:"";
+  if(!date){alert("Merci de choisir une date 📅");return;}
+  if(editId){events=events.map(e=>e.id===editId?{...e,name,emoji:selEmoji,color:selColor,date,time}:e);}
+  else{events.push({id:Date.now().toString(),createdAt:new Date().toISOString(),name,emoji:selEmoji,color:selColor,date,time});}
+  saveLS();closeForm();render();
+}
+
+if(window.speechSynthesis){speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();}
+render();
+setInterval(render,60000);
+</script>
+</body>
+</html>
