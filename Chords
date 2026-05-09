@@ -1,1 +1,831 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Guitar Progression Builder V14</title>
 
+<style>
+body { margin:0; font-family:Arial,sans-serif; background:#101114; color:white; }
+.app { max-width:1150px; margin:auto; padding:25px; }
+.version { text-align:center; color:#f2b84b; font-weight:bold; margin-bottom:12px; }
+
+.controls,.progression-zone,.micro-zone {
+  background:#181a20;
+  padding:18px;
+  border-radius:22px;
+  margin-bottom:20px;
+}
+
+.controls,.actions {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+}
+
+select,input,button {
+  padding:11px;
+  border:none;
+  border-radius:12px;
+  font-size:15px;
+}
+
+select,input { background:#252936; color:white; }
+
+button {
+  background:linear-gradient(135deg,#2f80ed,#9b51e0);
+  color:white;
+  cursor:pointer;
+}
+
+button.secondary { background:#252936; }
+
+.progression { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+
+.pill {
+  padding:12px 16px;
+  border-radius:999px;
+  font-weight:bold;
+}
+
+.pill.tonic { background:#2f80ed; }
+.pill.sub { background:#27ae60; }
+.pill.dom { background:#eb5757; }
+
+.arrow { color:#aaa; }
+
+.legend {
+  display:flex;
+  flex-wrap:wrap;
+  gap:14px;
+  margin-top:14px;
+  color:#aaa;
+  font-size:14px;
+}
+
+.legend span { display:flex; align-items:center; gap:6px; }
+
+.dot {
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  display:inline-block;
+}
+
+.cards {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+  gap:18px;
+}
+
+.card {
+  background:#181a20;
+  border-radius:24px;
+  padding:18px;
+  cursor:pointer;
+  min-height:330px;
+}
+
+.card:hover { transform:translateY(-4px); }
+
+.tonic { border-top:8px solid #2f80ed; }
+.sub { border-top:8px solid #27ae60; }
+.dom { border-top:8px solid #eb5757; }
+
+.chord { font-size:32px; margin-bottom:8px; }
+.effect { color:#aaa; margin-bottom:10px; min-height:38px; }
+
+.diagram {
+  background:rgba(255,255,255,0.06);
+  border-radius:18px;
+  padding:10px;
+}
+
+.diagram svg { width:100%; height:185px; }
+
+.note {
+  color:#aaa;
+  font-size:13px;
+  margin-top:8px;
+}
+
+.micro-status {
+  color:#aaa;
+  margin-top:10px;
+  line-height:1.5;
+}
+
+.detected {
+  font-size:24px;
+  font-weight:bold;
+  color:#f2b84b;
+}
+
+@media(max-width:800px){
+  .controls,.actions { grid-template-columns:1fr; }
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+<div class="version">Version V14</div>
+
+<div class="controls">
+  <select id="key"></select>
+
+  <select id="style">
+    <option value="pop">Pop</option>
+    <option value="rock">Rock</option>
+    <option value="folk">Folk</option>
+    <option value="blues">Blues</option>
+    <option value="jazz">Jazz</option>
+    <option value="soul">Soul</option>
+    <option value="ambient">Ambient</option>
+    <option value="reggae">Reggae</option>
+  </select>
+
+  <select id="level">
+    <option value="beginner">Débutant</option>
+    <option value="intermediate">Intermédiaire</option>
+    <option value="expert">Expert</option>
+  </select>
+
+  <input id="startChord" value="C">
+</div>
+
+<div class="actions">
+  <button id="startBtn">Démarrer</button>
+  <button id="undoBtn">Retour</button>
+  <button id="resetBtn">Reset</button>
+  <button id="typicalBtn">Progression type</button>
+</div>
+
+<div class="micro-zone">
+  <div class="actions">
+    <button id="micBtn">Activer le micro</button>
+    <button id="stopMicBtn" class="secondary">Couper le micro</button>
+    <button id="useDetectedBtn" class="secondary">Utiliser l’accord détecté</button>
+  </div>
+  <div class="micro-status">
+    Statut : <span id="micStatus">micro inactif</span><br>
+    Accord détecté : <span id="detectedChord" class="detected">-</span><br>
+    Note dominante : <span id="detectedNote">-</span><br>
+    Confiance : <span id="confidence">-</span>
+  </div>
+</div>
+
+<div class="progression-zone">
+  <div id="progression" class="progression"></div>
+
+  <div class="legend">
+    <span><i class="dot" style="background:#2f80ed"></i>Repos / résolution</span>
+    <span><i class="dot" style="background:#27ae60"></i>Ouverture / mouvement</span>
+    <span><i class="dot" style="background:#eb5757"></i>Tension / relance</span>
+  </div>
+</div>
+
+<div id="cards" class="cards"></div>
+
+</div>
+
+<script>
+const APP_VERSION = "V14";
+
+const DATA = {
+"C": { label:"Do majeur", chords:["C","Dm","Em","F","G","Am"], degrees:["I","ii","iii","IV","V","vi"] },
+"Db": { label:"Ré bémol majeur", chords:["Db","Ebm","Fm","Gb","Ab","Bbm"], degrees:["I","ii","iii","IV","V","vi"] },
+"D": { label:"Ré majeur", chords:["D","Em","F#m","G","A","Bm"], degrees:["I","ii","iii","IV","V","vi"] },
+"Eb": { label:"Mi bémol majeur", chords:["Eb","Fm","Gm","Ab","Bb","Cm"], degrees:["I","ii","iii","IV","V","vi"] },
+"E": { label:"Mi majeur", chords:["E","F#m","G#m","A","B","C#m"], degrees:["I","ii","iii","IV","V","vi"] },
+"F": { label:"Fa majeur", chords:["F","Gm","Am","Bb","C","Dm"], degrees:["I","ii","iii","IV","V","vi"] },
+"Gb": { label:"Sol bémol majeur", chords:["Gb","Abm","Bbm","Cb","Db","Ebm"], degrees:["I","ii","iii","IV","V","vi"] },
+"G": { label:"Sol majeur", chords:["G","Am","Bm","C","D","Em"], degrees:["I","ii","iii","IV","V","vi"] },
+"Ab": { label:"La bémol majeur", chords:["Ab","Bbm","Cm","Db","Eb","Fm"], degrees:["I","ii","iii","IV","V","vi"] },
+"A": { label:"La majeur", chords:["A","Bm","C#m","D","E","F#m"], degrees:["I","ii","iii","IV","V","vi"] },
+"Bb": { label:"Si bémol majeur", chords:["Bb","Cm","Dm","Eb","F","Gm"], degrees:["I","ii","iii","IV","V","vi"] },
+"B": { label:"Si majeur", chords:["B","C#m","D#m","E","F#","G#m"], degrees:["I","ii","iii","IV","V","vi"] },
+
+"Am": { label:"La mineur", chords:["Am","Dm","Em","F","G","C"], degrees:["i","iv","v","VI","VII","III"] },
+"Bm": { label:"Si mineur", chords:["Bm","Em","F#m","G","A","D"], degrees:["i","iv","v","VI","VII","III"] },
+"Cm": { label:"Do mineur", chords:["Cm","Fm","Gm","Ab","Bb","Eb"], degrees:["i","iv","v","VI","VII","III"] },
+"C#m": { label:"Do dièse mineur", chords:["C#m","F#m","G#m","A","B","E"], degrees:["i","iv","v","VI","VII","III"] },
+"Dm": { label:"Ré mineur", chords:["Dm","Gm","Am","Bb","C","F"], degrees:["i","iv","v","VI","VII","III"] },
+"Ebm": { label:"Mi bémol mineur", chords:["Ebm","Abm","Bbm","Cb","Db","Gb"], degrees:["i","iv","v","VI","VII","III"] },
+"Em": { label:"Mi mineur", chords:["Em","Am","Bm","C","D","G"], degrees:["i","iv","v","VI","VII","III"] },
+"Fm": { label:"Fa mineur", chords:["Fm","Bbm","Cm","Db","Eb","Ab"], degrees:["i","iv","v","VI","VII","III"] },
+"F#m": { label:"Fa dièse mineur", chords:["F#m","Bm","C#m","D","E","A"], degrees:["i","iv","v","VI","VII","III"] },
+"Gm": { label:"Sol mineur", chords:["Gm","Cm","Dm","Eb","F","Bb"], degrees:["i","iv","v","VI","VII","III"] },
+"G#m": { label:"Sol dièse mineur", chords:["G#m","C#m","D#m","E","F#","B"], degrees:["i","iv","v","VI","VII","III"] }
+};
+
+const STYLE = {
+pop:{
+I:["V","vi","IV"], ii:["V","IV"], iii:["vi","IV"], IV:["I","V","vi"], V:["I","vi"], vi:["IV","V","ii"],
+i:["VI","VII","iv"], iv:["VII","i"], v:["i","VI"], VI:["VII","i"], VII:["i","VI"], III:["VI","iv"]
+},
+rock:{
+I:["IV","V","vi"], ii:["IV","V"], iii:["IV","vi"], IV:["I","V"], V:["IV","I","vi"], vi:["IV","V","I"],
+i:["VII","VI","iv"], iv:["i","VII"], v:["iv","i"], VI:["VII","i"], VII:["i","VI"], III:["VI","VII"]
+},
+folk:{
+I:["IV","V","vi"], ii:["V","I"], iii:["IV","vi"], IV:["I","V"], V:["I","vi"], vi:["IV","I","V"],
+i:["VI","iv","VII"], iv:["i","VII"], v:["i"], VI:["i","VII"], VII:["i","VI"], III:["VI","VII"]
+},
+blues:{
+I:["IV","V","I"], IV:["I","V"], V:["IV","I"], ii:["V"], iii:["IV"], vi:["IV","V"],
+i:["iv","VII","i"], iv:["i","VII"], v:["iv","i"], VI:["VII","i"], VII:["i"], III:["VI"]
+},
+jazz:{
+I:["ii","V","vi"], ii:["V","I"], iii:["vi","ii"], IV:["ii","V","I"], V:["I","vi"], vi:["ii","V"],
+i:["iv","VII","VI"], iv:["VII","i"], v:["i","VI"], VI:["iv","VII"], VII:["III","i"], III:["VI","iv"]
+},
+soul:{
+I:["vi","IV","ii"], ii:["V","I"], iii:["vi","IV"], IV:["iii","vi","ii"], V:["vi","I"], vi:["ii","IV","V"],
+i:["VI","iv","VII"], iv:["VII","i","VI"], v:["i","VI"], VI:["iv","III","VII"], VII:["i","VI"], III:["VI","iv"]
+},
+ambient:{
+I:["vi","IV","iii"], ii:["IV","vi"], iii:["IV","vi","I"], IV:["I","vi","iii"], V:["vi","IV","I"], vi:["IV","I","iii"],
+i:["VI","III","VII"], iv:["VI","i"], v:["VI","III"], VI:["III","VII","i"], VII:["VI","III","i"], III:["VI","VII","iv"]
+},
+reggae:{
+I:["V","vi","IV"], ii:["V","IV"], iii:["vi","IV"], IV:["I","V"], V:["vi","IV","I"], vi:["IV","V","I"],
+i:["VII","VI","iv"], iv:["VII","i"], v:["VI","VII"], VI:["VII","i"], VII:["i","VI"], III:["VI","VII"]
+}
+};
+
+const DIAGRAMS = {
+"C":{baseFret:1, frets:["x",3,2,0,1,0]},
+"C7":{baseFret:1, frets:["x",3,2,3,1,0]},
+"Cmaj7":{baseFret:1, frets:["x",3,2,0,0,0]},
+"Cadd9":{baseFret:1, frets:["x",3,2,0,3,0]},
+"C9":{baseFret:3, frets:["x",3,2,3,3,3]},
+
+"D":{baseFret:1, frets:["x","x",0,2,3,2]},
+"D7":{baseFret:1, frets:["x","x",0,2,1,2]},
+"Dm":{baseFret:1, frets:["x","x",0,2,3,1]},
+"Dmaj7":{baseFret:1, frets:["x","x",0,2,2,2]},
+"Dadd9":{baseFret:1, frets:["x","x",0,2,3,0]},
+"D9":{baseFret:5, frets:["x",5,4,5,5,5]},
+
+"E":{baseFret:1, frets:[0,2,2,1,0,0]},
+"E7":{baseFret:1, frets:[0,2,0,1,0,0]},
+"Em":{baseFret:1, frets:[0,2,2,0,0,0]},
+"Emaj7":{baseFret:1, frets:[0,2,1,1,0,0]},
+"Eadd9":{baseFret:1, frets:[0,2,2,1,0,2]},
+"E9":{baseFret:7, frets:["x",7,6,7,7,7]},
+
+"F":{baseFret:1, frets:[1,3,3,2,1,1]},
+"F7":{baseFret:1, frets:[1,3,1,2,1,1]},
+"Fm":{baseFret:1, frets:[1,3,3,1,1,1]},
+"Fmaj7":{baseFret:1, frets:["x","x",3,2,1,0]},
+"Fadd9":{baseFret:1, frets:[1,3,3,0,1,1]},
+"F9":{baseFret:1, frets:[1,3,1,2,1,3]},
+
+"G":{baseFret:1, frets:[3,2,0,0,0,3]},
+"G7":{baseFret:1, frets:[3,2,0,0,0,1]},
+"Gm":{baseFret:3, frets:[3,5,5,3,3,3]},
+"Gmaj7":{baseFret:1, frets:[3,2,0,0,0,2]},
+"Gadd9":{baseFret:1, frets:[3,0,0,0,0,3]},
+"G9":{baseFret:3, frets:[3,5,3,4,3,5]},
+
+"A":{baseFret:1, frets:["x",0,2,2,2,0]},
+"A7":{baseFret:1, frets:["x",0,2,0,2,0]},
+"Am":{baseFret:1, frets:["x",0,2,2,1,0]},
+"Amaj7":{baseFret:1, frets:["x",0,2,1,2,0]},
+"Aadd9":{baseFret:1, frets:["x",0,2,2,0,0]},
+"A9":{baseFret:1, frets:["x",0,2,4,2,3]},
+
+"Bb":{baseFret:1, frets:["x",1,3,3,3,1]},
+"Bb7":{baseFret:1, frets:["x",1,3,1,3,1]},
+"Bbm":{baseFret:1, frets:["x",1,3,3,2,1]},
+"Bbmaj7":{baseFret:1, frets:["x",1,3,2,3,1]},
+
+"B":{baseFret:2, frets:["x",2,4,4,4,2]},
+"B7":{baseFret:1, frets:["x",2,1,2,0,2]},
+"Bm":{baseFret:2, frets:["x",2,4,4,3,2]},
+"Bmaj7":{baseFret:2, frets:["x",2,4,3,4,2]},
+
+"C#m":{baseFret:4, frets:["x",4,6,6,5,4]},
+"C#7":{baseFret:4, frets:["x",4,6,4,6,4]},
+"C#maj7":{baseFret:4, frets:["x",4,6,5,6,4]},
+
+"Db":{baseFret:4, frets:["x",4,6,6,6,4]},
+"Eb":{baseFret:6, frets:["x",6,8,8,8,6]},
+"Ebm":{baseFret:6, frets:["x",6,8,8,7,6]},
+"F#":{baseFret:2, frets:[2,4,4,3,2,2]},
+"F#m":{baseFret:2, frets:[2,4,4,2,2,2]},
+"F#7":{baseFret:2, frets:[2,4,2,3,2,2]},
+"Ab":{baseFret:4, frets:[4,6,6,5,4,4]},
+"Abm":{baseFret:4, frets:[4,6,6,4,4,4]},
+"G#m":{baseFret:4, frets:[4,6,6,4,4,4]},
+"D#m":{baseFret:6, frets:["x",6,8,8,7,6]}
+};
+
+const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+const CHORD_TEMPLATES = [
+  { name:"C", notes:["C","E","G"] },
+  { name:"Cm", notes:["C","D#","G"] },
+  { name:"D", notes:["D","F#","A"] },
+  { name:"Dm", notes:["D","F","A"] },
+  { name:"E", notes:["E","G#","B"] },
+  { name:"Em", notes:["E","G","B"] },
+  { name:"F", notes:["F","A","C"] },
+  { name:"Fm", notes:["F","G#","C"] },
+  { name:"G", notes:["G","B","D"] },
+  { name:"Gm", notes:["G","A#","D"] },
+  { name:"A", notes:["A","C#","E"] },
+  { name:"Am", notes:["A","C","E"] },
+  { name:"B", notes:["B","D#","F#"] },
+  { name:"Bm", notes:["B","D","F#"] }
+];
+
+let progression = [];
+
+let audioContext = null;
+let analyser = null;
+let micStream = null;
+let micInterval = null;
+let lastDetectedChord = null;
+
+function init(){
+const keySelect=document.getElementById("key");
+
+Object.keys(DATA).forEach(function(k){
+const option=document.createElement("option");
+option.value=k;
+option.textContent=DATA[k].label;
+keySelect.appendChild(option);
+});
+
+keySelect.value="C";
+document.getElementById("startChord").value="C";
+
+document.getElementById("startBtn").onclick=start;
+document.getElementById("undoBtn").onclick=undo;
+document.getElementById("resetBtn").onclick=reset;
+document.getElementById("typicalBtn").onclick=applyTypicalProgression;
+document.getElementById("micBtn").onclick=startMicrophone;
+document.getElementById("stopMicBtn").onclick=stopMicrophone;
+document.getElementById("useDetectedBtn").onclick=useDetectedChord;
+
+document.getElementById("key").addEventListener("change",function(){
+const key=document.getElementById("key").value;
+document.getElementById("startChord").value=DATA[key].chords[0];
+progression=[DATA[key].chords[0]];
+render();
+});
+
+document.getElementById("style").addEventListener("change",render);
+document.getElementById("level").addEventListener("change",render);
+
+start();
+}
+
+function start(){
+const key=document.getElementById("key").value;
+const input=document.getElementById("startChord").value.trim();
+const chord=input || DATA[key].chords[0];
+progression=[chord];
+render();
+}
+
+function undo(){
+if(progression.length>1){
+progression.pop();
+render();
+}
+}
+
+function reset(){
+const key=document.getElementById("key").value;
+progression=[DATA[key].chords[0]];
+document.getElementById("startChord").value=DATA[key].chords[0];
+render();
+}
+
+function render(){
+renderProgression();
+renderCards();
+}
+
+function cleanChord(chord){
+return chord
+.replace("maj9","")
+.replace("maj7","")
+.replace("add9","")
+.replace("sus4","")
+.replace("9","")
+.replace("7","");
+}
+
+function getRole(degree){
+if(["I","i","iii","III","vi"].includes(degree)) return "tonic";
+if(["ii","iv","IV","VI"].includes(degree)) return "sub";
+return "dom";
+}
+
+function getTypicalDegrees(style,isMinor){
+if(!isMinor){
+if(style==="pop") return ["I","V","vi","IV"];
+if(style==="rock") return ["I","IV","V","I"];
+if(style==="folk") return ["I","IV","V","vi","IV","I"];
+if(style==="blues") return ["I","IV","I","V","IV","I"];
+if(style==="jazz") return ["ii","V","I","vi","ii","V","I"];
+if(style==="soul") return ["I","vi","IV","ii","V","I"];
+if(style==="ambient") return ["I","vi","IV","iii","IV","I"];
+if(style==="reggae") return ["I","V","vi","IV"];
+return ["I","V","vi","IV"];
+}
+
+if(style==="pop") return ["i","VI","VII","iv"];
+if(style==="rock") return ["i","VII","VI","VII"];
+if(style==="folk") return ["i","VI","VII","iv","i"];
+if(style==="blues") return ["i","iv","i","VII","iv","i"];
+if(style==="jazz") return ["iv","VII","III","VI","iv","v","i"];
+if(style==="soul") return ["i","VI","iv","VII","i"];
+if(style==="ambient") return ["i","VI","III","VII","VI","i"];
+if(style==="reggae") return ["i","VII","VI","VII"];
+return ["i","VI","VII","iv"];
+}
+
+function applyTypicalProgression(){
+const key=document.getElementById("key").value;
+const style=document.getElementById("style").value;
+const level=document.getElementById("level").value;
+const data=DATA[key];
+const isMinor=data.degrees.includes("i");
+const degrees=getTypicalDegrees(style,isMinor);
+
+progression=[];
+
+degrees.forEach(function(degree){
+const index=data.degrees.indexOf(degree);
+if(index<0) return;
+const baseChord=data.chords[index];
+const chord=enrichChord(baseChord,degree,style,level);
+progression.push(chord);
+});
+
+render();
+}
+
+function enrichChord(chord,degree,style,level){
+if(level==="beginner") return chord;
+
+if(style==="blues"){
+if(["I","IV","V","VII"].includes(degree)){
+return level==="expert" ? chord+"9" : chord+"7";
+}
+return chord;
+}
+
+if(style==="jazz"){
+if(level==="intermediate"){
+if(["I","IV","III","VI"].includes(degree)) return chord+"maj7";
+if(["ii","iii","vi","iv","v"].includes(degree)) return chord+"7";
+if(["V","VII"].includes(degree)) return chord+"7";
+return chord+"7";
+}
+if(level==="expert"){
+if(["I","IV","III","VI"].includes(degree)) return chord+"maj7";
+if(["V","VII"].includes(degree)) return chord+"9";
+return chord+"7";
+}
+}
+
+if(style==="soul"){
+if(["I","IV","III","VI"].includes(degree)) return chord+"maj7";
+if(["V","VII"].includes(degree)) return chord+"7";
+return chord+"7";
+}
+
+if(style==="ambient"){
+if(["I","IV","VI","III"].includes(degree)) return chord+"add9";
+return level==="expert" ? chord+"sus4" : chord;
+}
+
+if(style==="reggae"){
+if(level==="expert" && ["V","VII"].includes(degree)) return chord+"7";
+return chord;
+}
+
+if(level==="intermediate"){
+if(["I","IV"].includes(degree)) return chord+"add9";
+return chord;
+}
+
+if(level==="expert"){
+if(["I","IV"].includes(degree)) return chord+"maj7";
+if(["V","VII"].includes(degree)) return chord+"7";
+return chord+"7";
+}
+
+return chord;
+}
+
+function getEffect(role,style){
+if(style==="ambient"){
+if(role==="tonic") return "Planant / stable";
+if(role==="sub") return "Ouverture large";
+return "Tension douce";
+}
+if(style==="blues"){
+if(role==="dom") return "Relance blues";
+return "Couleur blues";
+}
+if(style==="jazz"){
+if(role==="dom") return "Cadence / tension jazz";
+if(role==="sub") return "Préparation harmonique";
+return "Résolution ou couleur";
+}
+if(style==="reggae"){
+if(role==="tonic") return "Assise rythmique";
+if(role==="sub") return "Ouverture souple";
+return "Relance syncopée";
+}
+if(role==="tonic") return "Repos / résolution";
+if(role==="sub") return "Ouverture / mouvement";
+return "Tension / relance";
+}
+
+function renderProgression(){
+const zone=document.getElementById("progression");
+zone.innerHTML="";
+
+const key=document.getElementById("key").value;
+const data=DATA[key];
+
+progression.forEach(function(chord,index){
+if(index>0){
+const arrow=document.createElement("span");
+arrow.className="arrow";
+arrow.textContent="→";
+zone.appendChild(arrow);
+}
+
+const baseChord=cleanChord(chord);
+let chordIndex=data.chords.indexOf(baseChord);
+if(chordIndex<0) chordIndex=0;
+
+const degree=data.degrees[chordIndex];
+const role=getRole(degree);
+
+const pill=document.createElement("span");
+pill.className="pill "+role;
+pill.textContent=chord;
+zone.appendChild(pill);
+});
+}
+
+function renderCards(){
+const key=document.getElementById("key").value;
+const style=document.getElementById("style").value;
+const level=document.getElementById("level").value;
+const data=DATA[key];
+
+const last=progression[progression.length-1];
+const baseLast=cleanChord(last);
+let index=data.chords.indexOf(baseLast);
+if(index<0) index=0;
+
+const degree=data.degrees[index];
+const nextDegrees=STYLE[style][degree] || STYLE[style].I || ["IV","V","vi"];
+
+const cards=document.getElementById("cards");
+cards.innerHTML="";
+
+nextDegrees.forEach(function(deg){
+const targetIndex=data.degrees.indexOf(deg);
+if(targetIndex<0) return;
+
+const baseChord=data.chords[targetIndex];
+const chord=enrichChord(baseChord,deg,style,level);
+const role=getRole(deg);
+
+const card=document.createElement("div");
+card.className="card "+role;
+
+card.innerHTML=
+'<div class="chord">'+chord+'</div>'+
+'<div class="effect">'+getEffect(role,style)+'</div>'+
+'<div class="diagram">'+drawDiagram(chord,baseChord)+'</div>';
+
+card.onclick=function(){
+progression.push(chord);
+render();
+};
+
+cards.appendChild(card);
+});
+}
+
+function drawDiagram(chord,baseChord){
+let used = chord;
+let diagram=DIAGRAMS[chord];
+
+if(!diagram){
+used = baseChord;
+diagram = DIAGRAMS[baseChord] || DIAGRAMS[cleanChord(chord)];
+}
+
+if(!diagram){
+return '<div class="note">Diagramme à ajouter</div>';
+}
+
+const shape=diagram.frets;
+const baseFret=diagram.baseFret || 1;
+
+let svg='<svg viewBox="0 0 170 190">';
+const startX=30;
+const startY=42;
+const stringGap=22;
+const fretGap=24;
+
+if(baseFret>1){
+svg+='<text x="8" y="55" fill="#aaa" font-size="13">'+baseFret+'</text>';
+}
+
+for(let i=0;i<6;i++){
+const x=startX+i*stringGap;
+svg+='<line x1="'+x+'" y1="'+startY+'" x2="'+x+'" y2="'+(startY+fretGap*5)+'" stroke="white" stroke-width="1.5"/>';
+}
+
+for(let i=0;i<=5;i++){
+const y=startY+i*fretGap;
+const thick=i===0 && baseFret===1 ? 5 : 1.5;
+svg+='<line x1="'+startX+'" y1="'+y+'" x2="'+(startX+stringGap*5)+'" y2="'+y+'" stroke="white" stroke-width="'+thick+'"/>';
+}
+
+shape.forEach(function(fret,i){
+const x=startX+i*stringGap;
+
+if(fret==="x"){
+svg+='<text x="'+(x-5)+'" y="32" fill="#ff8a8a" font-size="15">x</text>';
+}
+else if(fret===0){
+svg+='<text x="'+(x-5)+'" y="32" fill="#ddd" font-size="15">o</text>';
+}
+else{
+const relativeFret=fret-baseFret+1;
+const y=startY+(relativeFret-0.5)*fretGap;
+svg+='<circle cx="'+x+'" cy="'+y+'" r="8" fill="#f2b84b"/>';
+}
+});
+
+svg+="</svg>";
+
+if(used !== chord){
+svg += '<div class="note">Grille de base : '+used+'</div>';
+}
+
+return svg;
+}
+
+async function startMicrophone(){
+try{
+micStream = await navigator.mediaDevices.getUserMedia({ audio:true });
+audioContext = new (window.AudioContext || window.webkitAudioContext)();
+const source = audioContext.createMediaStreamSource(micStream);
+
+analyser = audioContext.createAnalyser();
+analyser.fftSize = 4096;
+source.connect(analyser);
+
+document.getElementById("micStatus").textContent = "micro actif";
+micInterval = setInterval(analyzeMicrophone, 300);
+}
+catch(error){
+document.getElementById("micStatus").textContent = "accès micro refusé ou indisponible";
+}
+}
+
+function stopMicrophone(){
+if(micInterval){
+clearInterval(micInterval);
+micInterval = null;
+}
+
+if(micStream){
+micStream.getTracks().forEach(track => track.stop());
+micStream = null;
+}
+
+if(audioContext){
+audioContext.close();
+audioContext = null;
+}
+
+document.getElementById("micStatus").textContent = "micro inactif";
+}
+
+function analyzeMicrophone(){
+if(!analyser || !audioContext) return;
+
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+analyser.getByteFrequencyData(dataArray);
+
+const sampleRate = audioContext.sampleRate;
+const binSize = sampleRate / analyser.fftSize;
+
+let peaks = [];
+
+for(let i=0; i<bufferLength; i++){
+const frequency = i * binSize;
+const amplitude = dataArray[i];
+
+if(frequency < 70 || frequency > 1200) continue;
+if(amplitude < 80) continue;
+
+peaks.push({ frequency, amplitude });
+}
+
+peaks.sort((a,b) => b.amplitude - a.amplitude);
+peaks = peaks.slice(0, 12);
+
+const chroma = {};
+NOTE_NAMES.forEach(n => chroma[n] = 0);
+
+peaks.forEach(function(p){
+const note = frequencyToNoteName(p.frequency);
+chroma[note] += p.amplitude;
+});
+
+let dominantNote = "-";
+let dominantValue = 0;
+
+Object.keys(chroma).forEach(function(note){
+if(chroma[note] > dominantValue){
+dominantValue = chroma[note];
+dominantNote = note;
+}
+});
+
+const result = detectChordFromChroma(chroma);
+
+if(result){
+lastDetectedChord = result.name;
+document.getElementById("detectedChord").textContent = result.name;
+document.getElementById("confidence").textContent = result.score + "%";
+}
+else{
+lastDetectedChord = null;
+document.getElementById("detectedChord").textContent = "-";
+document.getElementById("confidence").textContent = "-";
+}
+
+document.getElementById("detectedNote").textContent = dominantNote;
+}
+
+function frequencyToNoteName(frequency){
+const midi = Math.round(12 * Math.log2(frequency / 440) + 69);
+const noteIndex = ((midi % 12) + 12) % 12;
+return NOTE_NAMES[noteIndex];
+}
+
+function detectChordFromChroma(chroma){
+let best = null;
+
+CHORD_TEMPLATES.forEach(function(template){
+let score = 0;
+let total = 0;
+
+Object.keys(chroma).forEach(function(note){
+total += chroma[note];
+});
+
+template.notes.forEach(function(note){
+score += chroma[note] || 0;
+});
+
+if(total === 0) return;
+
+let percent = Math.round((score / total) * 100);
+
+if(!best || percent > best.score){
+best = { name: template.name, score: percent };
+}
+});
+
+if(best && best.score >= 45){
+return best;
+}
+
+return null;
+}
+
+function useDetectedChord(){
+if(!lastDetectedChord) return;
+
+document.getElementById("startChord").value = lastDetectedChord;
+progression = [lastDetectedChord];
+render();
+}
+
+window.addEventListener("DOMContentLoaded",init);
+</script>
+
+</body>
+</html>
