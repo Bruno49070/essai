@@ -15,24 +15,21 @@ body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#
 
 #btn-add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:20px;border:2.5px dashed rgba(255,255,255,0.35);background:rgba(255,255,255,0.07);cursor:pointer;margin-bottom:14px;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:rgba(255,255,255,0.85);}
 
-/* Boutons export / import */
+/* Boutons export / partage / import */
 .data-tools{margin-bottom:20px;}
 #btn-data-lock{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:18px;border:none;background:rgba(255,255,255,0.16);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
 .data-actions{display:none;gap:8px;margin-top:10px;}
 .data-actions.visible{display:flex;}
-.data-actions button{flex:1;padding:13px;border-radius:16px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
+.data-actions button{flex:1;padding:13px;border-radius:16px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:14px;font-weight:700;color:white;}
 
 .card{border-radius:26px;padding:20px 16px 16px;border:2px solid rgba(255,255,255,0.35);position:relative;overflow:hidden;margin-bottom:16px;}
 
-/* Bouton cadenas */
 .btn-lock{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
 
-/* Boutons modifier/supprimer cachés par défaut */
 .card-actions{position:absolute;top:12px;right:12px;display:none;gap:6px;}
 .card-actions.visible{display:flex;}
 .card-actions button{background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
 
-/* Barre décompte déverrouillage */
 .unlock-bar-wrap{display:none;height:4px;background:rgba(255,255,255,0.2);border-radius:99px;margin-top:10px;overflow:hidden;}
 .unlock-bar-wrap.visible{display:block;}
 .unlock-bar{height:100%;border-radius:99px;background:rgba(255,255,255,0.8);width:100%;transition:width 30s linear;}
@@ -48,7 +45,6 @@ body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#
 .bar-labels span{color:rgba(255,255,255,0.6);font-size:10px;}
 .btn-speak{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px;border-radius:18px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:white;}
 
-/* Overlay formulaire événement */
 .overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.75);z-index:100;overflow-y:auto;padding:20px;}
 .overlay.open{display:block;}
 .modal{background:white;border-radius:28px;padding:24px;max-width:460px;width:100%;margin:0 auto;}
@@ -73,7 +69,6 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
 .empty .big{font-size:72px;}
 .empty p{color:rgba(255,255,255,0.4);font-size:17px;margin-top:10px;}
 
-/* Overlay PIN */
 .pin-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.85);z-index:200;align-items:center;justify-content:center;padding:20px;}
 .pin-overlay.open{display:flex;}
 .pin-modal{background:white;border-radius:28px;padding:28px 24px 24px;max-width:300px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
@@ -105,10 +100,11 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
 </button>
 
 <div class="data-tools">
-  <button id="btn-data-lock" onclick="openPIN('data')">🔐 Exporter / importer les événements</button>
+  <button id="btn-data-lock" onclick="openPIN('data')">🔐 Exporter / partager / importer</button>
 
   <div class="data-actions" id="data-actions">
     <button onclick="exportEvents()">⬇️ Exporter</button>
+    <button onclick="shareEvents()">📤 Partager</button>
     <button onclick="openImportFile()">⬆️ Importer</button>
   </div>
 
@@ -122,12 +118,12 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
 </div>
 
 <div id="list"></div>
+
 <div class="empty" id="empty" style="display:none">
   <div class="big">🌈</div>
   <p>Aucun événement.<br>Ajoutes-en un ! 👆</p>
 </div>
 
-<!-- Overlay formulaire -->
 <div class="overlay" id="overlay">
   <div class="modal">
     <div class="tabs">
@@ -135,6 +131,7 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
       <button class="tab" id="tab1" onclick="goTab(1)">2. Nom</button>
       <button class="tab" id="tab2" onclick="goTab(2)">3. Date</button>
     </div>
+
     <div class="section" id="sec0">
       <h3>Choisis une icône 🎨</h3>
       <div class="emoji-grid" id="emoji-grid"></div>
@@ -142,11 +139,13 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
       <h3 style="font-size:16px;margin-bottom:8px">Couleur</h3>
       <div class="palette" id="palette"></div>
     </div>
+
     <div class="section" id="sec1">
       <h3>Nom de l'événement ✍️</h3>
       <div class="preview" id="prev1">🎂</div>
       <input type="text" id="inp-name" placeholder="Ex : Anniversaire d'Elouan"/>
     </div>
+
     <div class="section" id="sec2">
       <h3>Quelle date ? 📅</h3>
       <div class="preview" id="prev2">🎂</div>
@@ -157,6 +156,7 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
       </label>
       <input type="time" id="inp-time" style="display:none"/>
     </div>
+
     <div class="form-nav">
       <button class="btn-prev" id="btn-prev" style="display:none" onclick="prevTab()">← Retour</button>
       <button class="btn-main" id="btn-main" onclick="nextOrSave()">Suivant →</button>
@@ -165,17 +165,18 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
   </div>
 </div>
 
-<!-- Overlay PIN -->
 <div class="pin-overlay" id="pin-overlay">
   <div class="pin-modal">
     <div class="pin-title">🔐 Code secret</div>
     <div class="pin-sub">Entre le code pour modifier</div>
+
     <div class="pin-dots" id="pin-dots">
       <div class="pin-dot" id="d0"></div>
       <div class="pin-dot" id="d1"></div>
       <div class="pin-dot" id="d2"></div>
       <div class="pin-dot" id="d3"></div>
     </div>
+
     <div class="pin-grid">
       <button class="pin-num" onclick="pinPress('1')">1</button>
       <button class="pin-num" onclick="pinPress('2')">2</button>
@@ -190,6 +191,7 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
       <button class="pin-num" onclick="pinPress('0')">0</button>
       <button class="pin-del" onclick="pinDel()">⌫</button>
     </div>
+
     <button class="pin-cancel-btn" onclick="closePIN()">Annuler</button>
   </div>
 </div>
@@ -206,7 +208,6 @@ let unlocked=false,unlockTimer=null;
 let pinInput="",pinTargetId=null;
 let dataUnlockTimer=null;
 
-// Grilles
 (function(){
   const g=document.getElementById("emoji-grid");
   EMOJIS.forEach(e=>{
@@ -333,10 +334,15 @@ function speak(text,btn){
 function arc(pct,emoji,sz=110){
   const r=(sz-16)/2,cx=sz/2,cy=sz/2,c=2*Math.PI*r;
 
-  return `<svg width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" stroke-width="10"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(pct/100)*c} ${c}" transform="rotate(-90 ${cx} ${cy})"/><text x="${cx}" y="${cy+3}" text-anchor="middle" dominant-baseline="middle" font-size="${sz*0.3}">${emoji}</text><text x="${cx}" y="${cy+r-5}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="800">${Math.round(pct)}%</text></svg>`;
+  return `<svg width="${sz}" height="${sz}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" stroke-width="10"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(pct/100)*c} ${c}" transform="rotate(-90 ${cx} ${cy})"/>
+    <text x="${cx}" y="${cy+3}" text-anchor="middle" dominant-baseline="middle" font-size="${sz*0.3}">${emoji}</text>
+    <text x="${cx}" y="${cy+r-5}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="800">${Math.round(pct)}%</text>
+  </svg>`;
 }
 
-// PIN
+/* PIN */
 function openPIN(target){
   pinInput="";
   pinTargetId=target || "events";
@@ -345,7 +351,7 @@ function openPIN(target){
   const sub=document.querySelector(".pin-sub");
   if(sub){
     sub.textContent=pinTargetId==="data"
-      ? "Entre le code pour exporter ou importer"
+      ? "Entre le code pour exporter, partager ou importer"
       : "Entre le code pour modifier";
   }
 
@@ -398,7 +404,7 @@ function updatePinDots(error){
   }
 }
 
-// Déverrouillage modification pendant 30 secondes
+/* Déverrouillage modification pendant 30 secondes */
 function unlock(){
   unlocked=true;
   clearTimeout(unlockTimer);
@@ -429,7 +435,7 @@ function lock(){
   document.querySelectorAll(".unlock-bar-wrap").forEach(el=>el.classList.remove("visible"));
 }
 
-// Export / import JSON protégé par PIN
+/* Export / partage / import JSON */
 function unlockDataTools(){
   const actions=document.getElementById("data-actions");
   const btn=document.getElementById("btn-data-lock");
@@ -451,35 +457,82 @@ function lockDataTools(){
   if(btn)btn.style.display="flex";
 }
 
+function buildExportData(){
+  return {
+    app:"mon-agenda-elouan",
+    version:1,
+    exportedAt:new Date().toISOString(),
+    events:events
+  };
+}
+
+function buildExportFile(){
+  const exportData=buildExportData();
+  const json=JSON.stringify(exportData,null,2);
+  const date=new Date().toISOString().slice(0,10);
+  const filename="agenda-elouan-"+date+".json";
+
+  const blob=new Blob([json],{type:"application/json"});
+  const file=new File([blob],filename,{type:"application/json"});
+
+  return {json,blob,file,filename};
+}
+
 function exportEvents(){
   if(!events.length){
     alert("Il n'y a aucun événement à exporter.");
     return;
   }
 
-  const exportData={
-    app:"mon-agenda-elouan",
-    version:1,
-    exportedAt:new Date().toISOString(),
-    events:events
-  };
+  const pack=buildExportFile();
 
-  const blob=new Blob(
-    [JSON.stringify(exportData,null,2)],
-    {type:"application/json"}
-  );
-
-  const date=new Date().toISOString().slice(0,10);
-  const filename="agenda-elouan-"+date+".json";
-
-  const url=URL.createObjectURL(blob);
+  const url=URL.createObjectURL(pack.blob);
   const a=document.createElement("a");
   a.href=url;
-  a.download=filename;
+  a.download=pack.filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+async function shareEvents(){
+  if(!events.length){
+    alert("Il n'y a aucun événement à partager.");
+    return;
+  }
+
+  const pack=buildExportFile();
+
+  try{
+    if(navigator.canShare && navigator.canShare({files:[pack.file]}) && navigator.share){
+      await navigator.share({
+        title:"Agenda Elouan",
+        text:"Export des événements de l'agenda Elouan.",
+        files:[pack.file]
+      });
+      return;
+    }
+
+    if(navigator.share){
+      await navigator.share({
+        title:"Agenda Elouan",
+        text:"Export des événements de l'agenda Elouan.\n\n" + pack.json
+      });
+      return;
+    }
+
+    alert("Le partage direct n'est pas disponible sur ce navigateur. Le fichier va être téléchargé à la place.");
+    exportEvents();
+
+  } catch(err){
+    if(err && err.name==="AbortError"){
+      return;
+    }
+
+    alert("Le partage n'a pas fonctionné. Le fichier va être téléchargé à la place.");
+    exportEvents();
+  }
 }
 
 function openImportFile(){
@@ -551,7 +604,7 @@ function importEventsFile(event){
   reader.readAsText(file);
 }
 
-// Rendu
+/* Rendu */
 function render(){
   const list=document.getElementById("list");
   const empty=document.getElementById("empty");
@@ -620,7 +673,7 @@ function delEv(id){
   render();
 }
 
-// Formulaire
+/* Formulaire */
 function openForm(ev){
   editId=ev?ev.id:null;
   selEmoji=ev?.emoji||"🎂";
