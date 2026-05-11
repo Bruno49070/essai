@@ -102,9 +102,9 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
   <button id="btn-data-lock" onclick="openPIN('data')">🔐 Exporter / partager / importer</button>
 
   <div class="data-actions" id="data-actions">
-    <button onclick="exportEvents()">⬇️ Exporter</button>
-    <button onclick="shareEvents()">📤 Partager</button>
-    <button onclick="openImportFile()">⬆️ Importer</button>
+    <button onclick="exportEvents()">⬇️ Exporter le fichier</button>
+    <button onclick="shareEvents()">📤 Partager en texte</button>
+    <button onclick="openImportFile()">⬆️ Importer un fichier</button>
   </div>
 
   <input
@@ -462,16 +462,17 @@ function buildExportData(){
   };
 }
 
+function buildExportJson(){
+  return JSON.stringify(buildExportData(),null,2);
+}
+
 function buildExportFile(){
-  const exportData=buildExportData();
-  const json=JSON.stringify(exportData,null,2);
+  const json=buildExportJson();
   const date=new Date().toISOString().slice(0,10);
   const filename="agenda-elouan-"+date+".json";
+  const blob=new Blob([json],{type:"application/json"});
 
-  const blob=new Blob([json],{type:"text/plain"});
-  const file=new File([blob],filename,{type:"text/plain"});
-
-  return {json,blob,file,filename};
+  return {json,blob,filename};
 }
 
 function exportEvents(){
@@ -498,36 +499,50 @@ async function shareEvents(){
     return;
   }
 
-  const pack=buildExportFile();
+  const json=buildExportJson();
+  const text=
+`Sauvegarde de l'agenda Elouan.
+
+Pour réimporter les événements :
+1. Copie tout le bloc JSON ci-dessous.
+2. Colle-le dans un fichier texte.
+3. Renomme ce fichier en agenda-elouan.json.
+4. Importe ce fichier dans l'application.
+
+JSON :
+${json}`;
 
   try{
-    if(navigator.share && navigator.canShare && navigator.canShare({files:[pack.file]})){
-      await navigator.share({
-        title:"Agenda Elouan",
-        text:"Export des événements de l'agenda Elouan.",
-        files:[pack.file]
-      });
-      return;
-    }
-
     if(navigator.share){
       await navigator.share({
-        title:"Agenda Elouan",
-        text:"Copie de sauvegarde de l'agenda Elouan.\n\n" + pack.json
+        title:"Sauvegarde Agenda Elouan",
+        text:text
       });
       return;
     }
 
-    alert("Le partage direct n'est pas disponible sur ce navigateur. Le fichier va être téléchargé à la place.");
-    exportEvents();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+      alert("Le partage direct n'est pas disponible. Le contenu de sauvegarde a été copié dans le presse-papiers.");
+      return;
+    }
+
+    alert("Le partage direct n'est pas disponible sur ce navigateur. Utilise le bouton Exporter le fichier.");
 
   } catch(err){
     if(err && err.name==="AbortError"){
       return;
     }
 
-    alert("Le partage direct du fichier n'a pas fonctionné. Le fichier va être téléchargé à la place.");
-    exportEvents();
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+        alert("Le partage n'a pas fonctionné. Le contenu de sauvegarde a été copié dans le presse-papiers.");
+        return;
+      }
+    } catch(e){}
+
+    alert("Le partage n'a pas fonctionné. Utilise le bouton Exporter le fichier.");
   }
 }
 
@@ -547,7 +562,15 @@ function importEventsFile(event){
 
   reader.onload=function(e){
     try{
-      const data=JSON.parse(e.target.result);
+      const raw=e.target.result;
+      let jsonText=raw;
+
+      const marker="JSON :";
+      if(raw.includes(marker)){
+        jsonText=raw.substring(raw.indexOf(marker)+marker.length).trim();
+      }
+
+      const data=JSON.parse(jsonText);
 
       let importedEvents=[];
 
