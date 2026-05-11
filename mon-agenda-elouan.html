@@ -15,12 +15,11 @@ body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#
 
 #btn-add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:20px;border:2.5px dashed rgba(255,255,255,0.35);background:rgba(255,255,255,0.07);cursor:pointer;margin-bottom:14px;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:rgba(255,255,255,0.85);}
 
-/* Boutons export / partage / import */
 .data-tools{margin-bottom:20px;}
 #btn-data-lock{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:18px;border:none;background:rgba(255,255,255,0.16);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
-.data-actions{display:none;gap:8px;margin-top:10px;}
+.data-actions{display:none;gap:8px;margin-top:10px;flex-direction:column;}
 .data-actions.visible{display:flex;}
-.data-actions button{flex:1;padding:13px;border-radius:16px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:14px;font-weight:700;color:white;}
+.data-actions button{width:100%;padding:13px;border-radius:16px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
 
 .card{border-radius:26px;padding:20px 16px 16px;border:2px solid rgba(255,255,255,0.35);position:relative;overflow:hidden;margin-bottom:16px;}
 
@@ -111,7 +110,7 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
   <input
     type="file"
     id="import-file"
-    accept=".json,application/json"
+    accept=".json,application/json,text/plain"
     style="display:none"
     onchange="importEventsFile(event)"
   />
@@ -342,7 +341,6 @@ function arc(pct,emoji,sz=110){
   </svg>`;
 }
 
-/* PIN */
 function openPIN(target){
   pinInput="";
   pinTargetId=target || "events";
@@ -404,7 +402,6 @@ function updatePinDots(error){
   }
 }
 
-/* Déverrouillage modification pendant 30 secondes */
 function unlock(){
   unlocked=true;
   clearTimeout(unlockTimer);
@@ -435,7 +432,6 @@ function lock(){
   document.querySelectorAll(".unlock-bar-wrap").forEach(el=>el.classList.remove("visible"));
 }
 
-/* Export / partage / import JSON */
 function unlockDataTools(){
   const actions=document.getElementById("data-actions");
   const btn=document.getElementById("btn-data-lock");
@@ -472,8 +468,8 @@ function buildExportFile(){
   const date=new Date().toISOString().slice(0,10);
   const filename="agenda-elouan-"+date+".json";
 
-  const blob=new Blob([json],{type:"application/json"});
-  const file=new File([blob],filename,{type:"application/json"});
+  const blob=new Blob([json],{type:"text/plain"});
+  const file=new File([blob],filename,{type:"text/plain"});
 
   return {json,blob,file,filename};
 }
@@ -505,7 +501,7 @@ async function shareEvents(){
   const pack=buildExportFile();
 
   try{
-    if(navigator.canShare && navigator.canShare({files:[pack.file]}) && navigator.share){
+    if(navigator.share && navigator.canShare && navigator.canShare({files:[pack.file]})){
       await navigator.share({
         title:"Agenda Elouan",
         text:"Export des événements de l'agenda Elouan.",
@@ -517,7 +513,7 @@ async function shareEvents(){
     if(navigator.share){
       await navigator.share({
         title:"Agenda Elouan",
-        text:"Export des événements de l'agenda Elouan.\n\n" + pack.json
+        text:"Copie de sauvegarde de l'agenda Elouan.\n\n" + pack.json
       });
       return;
     }
@@ -530,7 +526,7 @@ async function shareEvents(){
       return;
     }
 
-    alert("Le partage n'a pas fonctionné. Le fichier va être téléchargé à la place.");
+    alert("Le partage direct du fichier n'a pas fonctionné. Le fichier va être téléchargé à la place.");
     exportEvents();
   }
 }
@@ -604,7 +600,6 @@ function importEventsFile(event){
   reader.readAsText(file);
 }
 
-/* Rendu */
 function render(){
   const list=document.getElementById("list");
   const empty=document.getElementById("empty");
@@ -673,7 +668,6 @@ function delEv(id){
   render();
 }
 
-/* Formulaire */
 function openForm(ev){
   editId=ev?ev.id:null;
   selEmoji=ev?.emoji||"🎂";
