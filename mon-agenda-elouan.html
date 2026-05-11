@@ -12,18 +12,31 @@ body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#
 .header{text-align:center;margin-bottom:24px;}
 .header h1{font-size:32px;font-weight:900;background:linear-gradient(90deg,#FFEAA7,#FF9F43,#FF6B6B);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .header p{color:rgba(255,255,255,0.5);font-size:14px;margin-top:4px;}
-#btn-add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:20px;border:2.5px dashed rgba(255,255,255,0.35);background:rgba(255,255,255,0.07);cursor:pointer;margin-bottom:20px;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:rgba(255,255,255,0.85);}
+
+#btn-add{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border-radius:20px;border:2.5px dashed rgba(255,255,255,0.35);background:rgba(255,255,255,0.07);cursor:pointer;margin-bottom:14px;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:rgba(255,255,255,0.85);}
+
+/* Boutons export / import */
+.data-tools{margin-bottom:20px;}
+#btn-data-lock{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px;border-radius:18px;border:none;background:rgba(255,255,255,0.16);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
+.data-actions{display:none;gap:8px;margin-top:10px;}
+.data-actions.visible{display:flex;}
+.data-actions button{flex:1;padding:13px;border-radius:16px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:15px;font-weight:700;color:white;}
+
 .card{border-radius:26px;padding:20px 16px 16px;border:2px solid rgba(255,255,255,0.35);position:relative;overflow:hidden;margin-bottom:16px;}
+
 /* Bouton cadenas */
 .btn-lock{position:absolute;top:12px;right:12px;background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;}
+
 /* Boutons modifier/supprimer cachés par défaut */
 .card-actions{position:absolute;top:12px;right:12px;display:none;gap:6px;}
 .card-actions.visible{display:flex;}
 .card-actions button{background:rgba(255,255,255,0.28);border:none;border-radius:12px;width:36px;height:36px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+
 /* Barre décompte déverrouillage */
 .unlock-bar-wrap{display:none;height:4px;background:rgba(255,255,255,0.2);border-radius:99px;margin-top:10px;overflow:hidden;}
 .unlock-bar-wrap.visible{display:block;}
 .unlock-bar{height:100%;border-radius:99px;background:rgba(255,255,255,0.8);width:100%;transition:width 30s linear;}
+
 .card-main{display:flex;align-items:center;gap:14px;margin-top:4px;}
 .card-info{flex:1;min-width:0;}
 .card-name{font-size:20px;font-weight:800;color:white;line-height:1.2;margin-bottom:5px;word-break:break-word;}
@@ -34,6 +47,7 @@ body{min-height:100vh;background:linear-gradient(160deg,#1a1040 0%,#2d1b69 45%,#
 .bar-labels{display:flex;justify-content:space-between;margin-top:3px;}
 .bar-labels span{color:rgba(255,255,255,0.6);font-size:10px;}
 .btn-speak{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:14px;padding:14px;border-radius:18px;border:none;background:rgba(255,255,255,0.25);cursor:pointer;font-family:'Baloo 2',cursive;font-size:17px;font-weight:700;color:white;}
+
 /* Overlay formulaire événement */
 .overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.75);z-index:100;overflow-y:auto;padding:20px;}
 .overlay.open{display:block;}
@@ -59,7 +73,7 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
 .empty .big{font-size:72px;}
 .empty p{color:rgba(255,255,255,0.4);font-size:17px;margin-top:10px;}
 
-/* ── Overlay PIN ───────────────────────────────────────────── */
+/* Overlay PIN */
 .pin-overlay{display:none;position:fixed;inset:0;background:rgba(10,5,30,0.85);z-index:200;align-items:center;justify-content:center;padding:20px;}
 .pin-overlay.open{display:flex;}
 .pin-modal{background:white;border-radius:28px;padding:28px 24px 24px;max-width:300px;width:100%;text-align:center;box-shadow:0 24px 80px rgba(0,0,0,0.5);}
@@ -89,6 +103,23 @@ input[type=text],input[type=date],input[type=time]{width:100%;padding:13px 16px;
 <button id="btn-add" onclick="openForm()">
   <span style="font-size:26px">＋</span> Ajouter un événement
 </button>
+
+<div class="data-tools">
+  <button id="btn-data-lock" onclick="openPIN('data')">🔐 Exporter / importer les événements</button>
+
+  <div class="data-actions" id="data-actions">
+    <button onclick="exportEvents()">⬇️ Exporter</button>
+    <button onclick="openImportFile()">⬆️ Importer</button>
+  </div>
+
+  <input
+    type="file"
+    id="import-file"
+    accept=".json,application/json"
+    style="display:none"
+    onchange="importEventsFile(event)"
+  />
+</div>
 
 <div id="list"></div>
 <div class="empty" id="empty" style="display:none">
@@ -171,85 +202,195 @@ const PIN_CODE="0110";
 
 let events=JSON.parse(localStorage.getItem("elouan")||"[]");
 let editId=null,curTab=0,selEmoji="🎂",selColor=PALETTE[0];
-let unlocked=false,unlockTimer=null,barTimer=null;
+let unlocked=false,unlockTimer=null;
 let pinInput="",pinTargetId=null;
+let dataUnlockTimer=null;
 
-// ── Grilles ──────────────────────────────────────────────────────────────────
+// Grilles
 (function(){
   const g=document.getElementById("emoji-grid");
-  EMOJIS.forEach(e=>{const b=document.createElement("button");b.className="emoji-btn";b.textContent=e;b.addEventListener("click",()=>pickEmoji(e));g.appendChild(b);});
+  EMOJIS.forEach(e=>{
+    const b=document.createElement("button");
+    b.className="emoji-btn";
+    b.textContent=e;
+    b.addEventListener("click",()=>pickEmoji(e));
+    g.appendChild(b);
+  });
+
   const p=document.getElementById("palette");
-  PALETTE.forEach(c=>{const b=document.createElement("button");b.className="color-btn";b.style.background=c;b.addEventListener("click",()=>pickColor(c));p.appendChild(b);});
+  PALETTE.forEach(c=>{
+    const b=document.createElement("button");
+    b.className="color-btn";
+    b.style.background=c;
+    b.addEventListener("click",()=>pickColor(c));
+    p.appendChild(b);
+  });
+
   document.getElementById("inp-usetime").addEventListener("change",function(){
     document.getElementById("inp-time").style.display=this.checked?"block":"none";
   });
 })();
 
-function saveLS(){localStorage.setItem("elouan",JSON.stringify(events));}
-
-function getDays(ds,ts){const t=ts?new Date(ds+"T"+ts):(()=>{const d=new Date(ds);d.setHours(0,0,0,0);return d;})();return(t-Date.now())/86400000;}
-function getPct(ca,ds,ts){const c=new Date(ca),t=ts?new Date(ds+"T"+ts):(()=>{const d=new Date(ds);d.setHours(0,0,0,0);return d;})();return Math.min(100,Math.max(0,(Date.now()-c)/(t-c)*100));}
-function fmtDate(s){const[y,m,d]=s.split("-");return`${parseInt(d)} ${MOIS[parseInt(m)-1]} ${y}`;}
-function dLabel(days,past){if(past)return"C'est passé !";if(days<1)return"Aujourd'hui !";if(days<2)return"Demain !";return`${Math.ceil(days)} jours`;}
-function phrase(days){
-  if(days<=0)return"C'est aujourd'hui ! Quelle journée spéciale !";
-  if(days<1)return"Plus que quelques heures ! Ca arrive tres bientot !";
-  if(days<2)return"Plus qu'un dodo ! Demain c'est le grand jour !";
-  if(days<3)return"Encore deux dodos et c'est la !";
-  if(days<7)return`C'est dans ${Math.ceil(days)} dodos. Ca approche !`;
-  if(days<14)return"Plus qu'une petite semaine ! Ca se rapproche vite !";
-  if(days<30)return`C'est dans ${Math.ceil(days)} jours. Bientot !`;
-  if(days<60)return`C'est dans environ ${Math.round(days/7)} semaines. Encore un peu de patience !`;
-  if(days<120)return`C'est dans ${Math.round(days/30)} mois. Ca viendra !`;
-  if(days<240)return"C'est encore dans longtemps. Il faut patienter !";
-  return"C'est dans tres longtemps. Il faut beaucoup de patience !";
+function saveLS(){
+  localStorage.setItem("elouan",JSON.stringify(events));
 }
+
+function getDays(ds,ts){
+  const t=ts
+    ? new Date(ds+"T"+ts)
+    : (()=>{
+        const d=new Date(ds);
+        d.setHours(0,0,0,0);
+        return d;
+      })();
+
+  return (t-Date.now())/86400000;
+}
+
+function getPct(ca,ds,ts){
+  const c=new Date(ca);
+  const t=ts
+    ? new Date(ds+"T"+ts)
+    : (()=>{
+        const d=new Date(ds);
+        d.setHours(0,0,0,0);
+        return d;
+      })();
+
+  return Math.min(100,Math.max(0,(Date.now()-c)/(t-c)*100));
+}
+
+function fmtDate(s){
+  const[y,m,d]=s.split("-");
+  return `${parseInt(d)} ${MOIS[parseInt(m)-1]} ${y}`;
+}
+
+function dLabel(days,past){
+  if(past)return "C'est passé !";
+  if(days<1)return "Aujourd'hui !";
+  if(days<2)return "Demain !";
+  return `${Math.ceil(days)} jours`;
+}
+
+function phrase(days){
+  if(days<=0)return "C'est aujourd'hui ! Quelle journée spéciale !";
+  if(days<1)return "Plus que quelques heures ! Ca arrive tres bientot !";
+  if(days<2)return "Plus qu'un dodo ! Demain c'est le grand jour !";
+  if(days<3)return "Encore deux dodos et c'est la !";
+  if(days<7)return `C'est dans ${Math.ceil(days)} dodos. Ca approche !`;
+  if(days<14)return "Plus qu'une petite semaine ! Ca se rapproche vite !";
+  if(days<30)return `C'est dans ${Math.ceil(days)} jours. Bientot !`;
+  if(days<60)return `C'est dans environ ${Math.round(days/7)} semaines. Encore un peu de patience !`;
+  if(days<120)return `C'est dans ${Math.round(days/30)} mois. Ca viendra !`;
+  if(days<240)return "C'est encore dans longtemps. Il faut patienter !";
+  return "C'est dans tres longtemps. Il faut beaucoup de patience !";
+}
+
 function speak(text,btn){
   if(!window.speechSynthesis)return;
+
   speechSynthesis.cancel();
+
   if(btn)btn.textContent="🔊 En cours…";
+
   setTimeout(()=>{
     const u=new SpeechSynthesisUtterance(text);
-    u.lang="fr-FR";u.rate=0.88;u.pitch=1.1;
+    u.lang="fr-FR";
+    u.rate=0.88;
+    u.pitch=1.1;
+
     const v=speechSynthesis.getVoices().find(x=>x.lang.startsWith("fr"));
     if(v)u.voice=v;
-    const done=()=>{if(btn)btn.textContent="🔊 Appuie pour écouter !";};
-    const kl=setInterval(()=>{if(!speechSynthesis.speaking){clearInterval(kl);return;}speechSynthesis.pause();speechSynthesis.resume();},8000);
-    u.onend=()=>{clearInterval(kl);done();};u.onerror=()=>{clearInterval(kl);done();};
-    speechSynthesis.resume();speechSynthesis.speak(u);
+
+    const done=()=>{
+      if(btn)btn.textContent="🔊 Appuie pour écouter !";
+    };
+
+    const kl=setInterval(()=>{
+      if(!speechSynthesis.speaking){
+        clearInterval(kl);
+        return;
+      }
+      speechSynthesis.pause();
+      speechSynthesis.resume();
+    },8000);
+
+    u.onend=()=>{
+      clearInterval(kl);
+      done();
+    };
+
+    u.onerror=()=>{
+      clearInterval(kl);
+      done();
+    };
+
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
   },150);
 }
+
 function arc(pct,emoji,sz=110){
   const r=(sz-16)/2,cx=sz/2,cy=sz/2,c=2*Math.PI*r;
-  return`<svg width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" stroke-width="10"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(pct/100)*c} ${c}" transform="rotate(-90 ${cx} ${cy})"/><text x="${cx}" y="${cy+3}" text-anchor="middle" dominant-baseline="middle" font-size="${sz*0.3}">${emoji}</text><text x="${cx}" y="${cy+r-5}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="800">${Math.round(pct)}%</text></svg>`;
+
+  return `<svg width="${sz}" height="${sz}"><circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.28)" stroke-width="10"/><circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,0.85)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${(pct/100)*c} ${c}" transform="rotate(-90 ${cx} ${cy})"/><text x="${cx}" y="${cy+3}" text-anchor="middle" dominant-baseline="middle" font-size="${sz*0.3}">${emoji}</text><text x="${cx}" y="${cy+r-5}" text-anchor="middle" dominant-baseline="middle" font-size="10" fill="white" font-weight="800">${Math.round(pct)}%</text></svg>`;
 }
 
-// ── PIN ───────────────────────────────────────────────────────────────────────
-function openPIN(id){
-  pinInput="";pinTargetId=id;
+// PIN
+function openPIN(target){
+  pinInput="";
+  pinTargetId=target || "events";
   updatePinDots(false);
+
+  const sub=document.querySelector(".pin-sub");
+  if(sub){
+    sub.textContent=pinTargetId==="data"
+      ? "Entre le code pour exporter ou importer"
+      : "Entre le code pour modifier";
+  }
+
   document.getElementById("pin-overlay").classList.add("open");
 }
+
 function closePIN(){
   document.getElementById("pin-overlay").classList.remove("open");
   pinInput="";
+  pinTargetId=null;
 }
+
 function pinPress(n){
   if(pinInput.length>=4)return;
+
   pinInput+=n;
   updatePinDots(false);
+
   if(pinInput.length===4){
     if(pinInput===PIN_CODE){
+      const target=pinTargetId;
       closePIN();
-      unlock();
+
+      if(target==="data"){
+        unlockDataTools();
+      } else {
+        unlock();
+      }
     } else {
-      // Erreur : secouer et réinitialiser
       updatePinDots(true);
-      setTimeout(()=>{pinInput="";updatePinDots(false);},800);
+      setTimeout(()=>{
+        pinInput="";
+        updatePinDots(false);
+      },800);
     }
   }
 }
-function pinDel(){if(pinInput.length>0){pinInput=pinInput.slice(0,-1);updatePinDots(false);}}
+
+function pinDel(){
+  if(pinInput.length>0){
+    pinInput=pinInput.slice(0,-1);
+    updatePinDots(false);
+  }
+}
+
 function updatePinDots(error){
   for(let i=0;i<4;i++){
     const d=document.getElementById("d"+i);
@@ -257,39 +398,181 @@ function updatePinDots(error){
   }
 }
 
-// ── Déverrouillage 30s ────────────────────────────────────────────────────────
+// Déverrouillage modification pendant 30 secondes
 function unlock(){
   unlocked=true;
   clearTimeout(unlockTimer);
-  // Afficher les boutons et la barre sur toutes les cartes
+
   document.querySelectorAll(".card-actions").forEach(el=>el.classList.add("visible"));
   document.querySelectorAll(".btn-lock").forEach(el=>el.style.display="none");
-  // Barre de décompte
+
   document.querySelectorAll(".unlock-bar-wrap").forEach(el=>{
     el.classList.add("visible");
     const bar=el.querySelector(".unlock-bar");
-    bar.style.transition="none";bar.style.width="100%";
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{bar.style.transition="width 30s linear";bar.style.width="0%";}));
+    bar.style.transition="none";
+    bar.style.width="100%";
+
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      bar.style.transition="width 30s linear";
+      bar.style.width="0%";
+    }));
   });
-  // Reverrouiller après 30s
+
   unlockTimer=setTimeout(lock,30000);
 }
+
 function lock(){
   unlocked=false;
+
   document.querySelectorAll(".card-actions").forEach(el=>el.classList.remove("visible"));
   document.querySelectorAll(".btn-lock").forEach(el=>el.style.display="flex");
   document.querySelectorAll(".unlock-bar-wrap").forEach(el=>el.classList.remove("visible"));
 }
 
-// ── Rendu ─────────────────────────────────────────────────────────────────────
+// Export / import JSON protégé par PIN
+function unlockDataTools(){
+  const actions=document.getElementById("data-actions");
+  const btn=document.getElementById("btn-data-lock");
+
+  if(!actions || !btn)return;
+
+  actions.classList.add("visible");
+  btn.style.display="none";
+
+  clearTimeout(dataUnlockTimer);
+  dataUnlockTimer=setTimeout(lockDataTools,30000);
+}
+
+function lockDataTools(){
+  const actions=document.getElementById("data-actions");
+  const btn=document.getElementById("btn-data-lock");
+
+  if(actions)actions.classList.remove("visible");
+  if(btn)btn.style.display="flex";
+}
+
+function exportEvents(){
+  if(!events.length){
+    alert("Il n'y a aucun événement à exporter.");
+    return;
+  }
+
+  const exportData={
+    app:"mon-agenda-elouan",
+    version:1,
+    exportedAt:new Date().toISOString(),
+    events:events
+  };
+
+  const blob=new Blob(
+    [JSON.stringify(exportData,null,2)],
+    {type:"application/json"}
+  );
+
+  const date=new Date().toISOString().slice(0,10);
+  const filename="agenda-elouan-"+date+".json";
+
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;
+  a.download=filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function openImportFile(){
+  const input=document.getElementById("import-file");
+  if(!input)return;
+
+  input.value="";
+  input.click();
+}
+
+function importEventsFile(event){
+  const file=event.target.files && event.target.files[0];
+  if(!file)return;
+
+  const reader=new FileReader();
+
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+
+      let importedEvents=[];
+
+      if(Array.isArray(data)){
+        importedEvents=data;
+      } else if(data && Array.isArray(data.events)){
+        importedEvents=data.events;
+      } else {
+        alert("Le fichier importé n'a pas le bon format.");
+        return;
+      }
+
+      const cleaned=importedEvents
+        .filter(ev=>ev && ev.date && ev.name)
+        .map(ev=>({
+          id:ev.id || (Date.now().toString()+Math.random().toString(16).slice(2)),
+          createdAt:ev.createdAt || new Date().toISOString(),
+          name:String(ev.name || "Mon événement"),
+          emoji:ev.emoji || "🎂",
+          color:ev.color || PALETTE[0],
+          date:ev.date,
+          time:ev.time || ""
+        }));
+
+      if(!cleaned.length){
+        alert("Aucun événement valide n'a été trouvé dans ce fichier.");
+        return;
+      }
+
+      const ok=confirm(
+        "Importer ce fichier va remplacer les événements actuellement enregistrés sur cet appareil. Continuer ?"
+      );
+
+      if(!ok)return;
+
+      localStorage.setItem("elouan_backup_"+Date.now(),JSON.stringify(events));
+
+      events=cleaned;
+      saveLS();
+      render();
+      lockDataTools();
+
+      alert("Import terminé : "+events.length+" événement(s) importé(s).");
+
+    } catch(err){
+      alert("Impossible de lire ce fichier. Vérifie qu'il s'agit bien d'un fichier JSON exporté depuis l'agenda.");
+    }
+  };
+
+  reader.readAsText(file);
+}
+
+// Rendu
 function render(){
-  const list=document.getElementById("list"),empty=document.getElementById("empty");
+  const list=document.getElementById("list");
+  const empty=document.getElementById("empty");
+
   const sorted=[...events].sort((a,b)=>getDays(a.date,a.time)-getDays(b.date,b.time));
-  if(!sorted.length){list.innerHTML="";empty.style.display="block";return;}
+
+  if(!sorted.length){
+    list.innerHTML="";
+    empty.style.display="block";
+    return;
+  }
+
   empty.style.display="none";
+
   list.innerHTML=sorted.map(ev=>{
-    const days=getDays(ev.date,ev.time),past=days<=0,pct=getPct(ev.createdAt,ev.date,ev.time),c=ev.color;
-    return`<div class="card" style="background:linear-gradient(135deg,${c}ee,${c}88);box-shadow:0 8px 28px ${c}55;">
+    const days=getDays(ev.date,ev.time);
+    const past=days<=0;
+    const pct=getPct(ev.createdAt,ev.date,ev.time);
+    const c=ev.color;
+
+    return `<div class="card" style="background:linear-gradient(135deg,${c}ee,${c}88);box-shadow:0 8px 28px ${c}55;">
       <button class="btn-lock" onclick="openPIN('${ev.id}')" style="${unlocked?'display:none':'display:flex'}">🔒</button>
       <div class="card-actions${unlocked?' visible':''}">
         <button onclick="openEdit('${ev.id}')">✏️</button>
@@ -309,68 +592,166 @@ function render(){
       <button class="btn-speak" id="sp-${ev.id}" onclick="speakEv('${ev.id}')">🔊 Appuie pour écouter !</button>
     </div>`;
   }).join("");
-  // Si déjà déverrouillé, relancer la barre sur les nouvelles cartes
-  if(unlocked) setTimeout(()=>{
-    document.querySelectorAll(".unlock-bar-wrap").forEach(el=>{el.classList.add("visible");});
-  },50);
+
+  if(unlocked){
+    setTimeout(()=>{
+      document.querySelectorAll(".unlock-bar-wrap").forEach(el=>{
+        el.classList.add("visible");
+      });
+    },50);
+  }
 }
 
-function speakEv(id){const ev=events.find(e=>e.id===id);if(!ev)return;speak(ev.name+". "+phrase(getDays(ev.date,ev.time)),document.getElementById("sp-"+id));}
+function speakEv(id){
+  const ev=events.find(e=>e.id===id);
+  if(!ev)return;
+
+  speak(
+    ev.name+". "+phrase(getDays(ev.date,ev.time)),
+    document.getElementById("sp-"+id)
+  );
+}
+
 function delEv(id){
   if(!confirm("Supprimer cet événement ?"))return;
-  events=events.filter(e=>e.id!==id);saveLS();render();
+
+  events=events.filter(e=>e.id!==id);
+  saveLS();
+  render();
 }
 
-// ── Formulaire ────────────────────────────────────────────────────────────────
+// Formulaire
 function openForm(ev){
-  editId=ev?ev.id:null;selEmoji=ev?.emoji||"🎂";selColor=ev?.color||PALETTE[0];
+  editId=ev?ev.id:null;
+  selEmoji=ev?.emoji||"🎂";
+  selColor=ev?.color||PALETTE[0];
+
   document.getElementById("inp-name").value=ev?.name||"";
   document.getElementById("inp-date").value=ev?.date||"";
   document.getElementById("inp-date").min=new Date().toISOString().split("T")[0];
   document.getElementById("inp-usetime").checked=!!ev?.time;
   document.getElementById("inp-time").value=ev?.time||"";
   document.getElementById("inp-time").style.display=ev?.time?"block":"none";
-  refreshEmoji();refreshColor();goTab(0);
+
+  refreshEmoji();
+  refreshColor();
+  goTab(0);
+
   document.getElementById("overlay").classList.add("open");
 }
-function openEdit(id){openForm(events.find(e=>e.id===id));}
-function closeForm(){document.getElementById("overlay").classList.remove("open");}
-function pickEmoji(e){selEmoji=e;refreshEmoji();}
-function pickColor(c){selColor=c;refreshColor();}
-function refreshEmoji(){
-  ["prev0","prev1","prev2"].forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=selEmoji;});
-  document.querySelectorAll(".emoji-btn").forEach(b=>{const a=b.textContent===selEmoji;b.style.background=a?selColor:"#f5f5f5";b.style.borderColor=a?selColor:"transparent";});
+
+function openEdit(id){
+  openForm(events.find(e=>e.id===id));
 }
+
+function closeForm(){
+  document.getElementById("overlay").classList.remove("open");
+}
+
+function pickEmoji(e){
+  selEmoji=e;
+  refreshEmoji();
+}
+
+function pickColor(c){
+  selColor=c;
+  refreshColor();
+}
+
+function refreshEmoji(){
+  ["prev0","prev1","prev2"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.textContent=selEmoji;
+  });
+
+  document.querySelectorAll(".emoji-btn").forEach(b=>{
+    const a=b.textContent===selEmoji;
+    b.style.background=a?selColor:"#f5f5f5";
+    b.style.borderColor=a?selColor:"transparent";
+  });
+}
+
 function refreshColor(){
-  document.querySelectorAll(".color-btn").forEach(b=>{b.style.outline=b.style.background===selColor?"3px solid #333":"3px solid transparent";});
-  ["tab0","tab1","tab2"].forEach(id=>{const el=document.getElementById(id);if(el.classList.contains("active"))el.style.background=selColor;});
+  document.querySelectorAll(".color-btn").forEach(b=>{
+    b.style.outline=b.style.background===selColor?"3px solid #333":"3px solid transparent";
+  });
+
+  ["tab0","tab1","tab2"].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el.classList.contains("active"))el.style.background=selColor;
+  });
+
   document.getElementById("btn-main").style.background=selColor;
 }
+
 function goTab(i){
   curTab=i;
-  ["sec0","sec1","sec2"].forEach((id,idx)=>{document.getElementById(id).className="section"+(idx===i?" active":"");});
-  ["tab0","tab1","tab2"].forEach((id,idx)=>{
-    const el=document.getElementById(id),active=idx===i;
-    active?el.classList.add("active"):el.classList.remove("active");
-    el.style.background=active?selColor:"#f0f0f0";el.style.color=active?"white":"#777";
+
+  ["sec0","sec1","sec2"].forEach((id,idx)=>{
+    document.getElementById(id).className="section"+(idx===i?" active":"");
   });
+
+  ["tab0","tab1","tab2"].forEach((id,idx)=>{
+    const el=document.getElementById(id);
+    const active=idx===i;
+
+    active?el.classList.add("active"):el.classList.remove("active");
+
+    el.style.background=active?selColor:"#f0f0f0";
+    el.style.color=active?"white":"#777";
+  });
+
   document.getElementById("btn-prev").style.display=i>0?"inline-block":"none";
-  const m=document.getElementById("btn-main");m.textContent=i<2?"Suivant →":"✅ Enregistrer";m.style.background=selColor;
+
+  const m=document.getElementById("btn-main");
+  m.textContent=i<2?"Suivant →":"✅ Enregistrer";
+  m.style.background=selColor;
 }
-function prevTab(){if(curTab>0)goTab(curTab-1);}
+
+function prevTab(){
+  if(curTab>0)goTab(curTab-1);
+}
+
 function nextOrSave(){
-  if(curTab<2){goTab(curTab+1);return;}
+  if(curTab<2){
+    goTab(curTab+1);
+    return;
+  }
+
   const name=document.getElementById("inp-name").value.trim()||"Mon événement";
   const date=document.getElementById("inp-date").value;
   const useT=document.getElementById("inp-usetime").checked;
   const time=useT?document.getElementById("inp-time").value:"";
-  if(!date){alert("Merci de choisir une date 📅");return;}
-  if(editId){events=events.map(e=>e.id===editId?{...e,name,emoji:selEmoji,color:selColor,date,time}:e);}
-  else{events.push({id:Date.now().toString(),createdAt:new Date().toISOString(),name,emoji:selEmoji,color:selColor,date,time});}
-  saveLS();closeForm();render();
+
+  if(!date){
+    alert("Merci de choisir une date 📅");
+    return;
+  }
+
+  if(editId){
+    events=events.map(e=>e.id===editId?{...e,name,emoji:selEmoji,color:selColor,date,time}:e);
+  } else {
+    events.push({
+      id:Date.now().toString(),
+      createdAt:new Date().toISOString(),
+      name,
+      emoji:selEmoji,
+      color:selColor,
+      date,
+      time
+    });
+  }
+
+  saveLS();
+  closeForm();
+  render();
 }
 
-if(window.speechSynthesis){speechSynthesis.getVoices();speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();}
+if(window.speechSynthesis){
+  speechSynthesis.getVoices();
+  speechSynthesis.onvoiceschanged=()=>speechSynthesis.getVoices();
+}
+
 render();
 setInterval(render,60000);
 </script>
