@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guitar Progression Builder V13</title>
+<title>Guitar Progression Builder V14</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -314,6 +314,11 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
       <div class="lz-right">
         <div class="lz-conf-label" id="lzConfLabel">Confiance : 0 %</div>
         <div class="lz-bar-track"><div class="lz-bar-fill" id="lzBar"></div></div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:5px">
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Note de basse :</div>
+          <div id="lzBass" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);font-weight:600">—</div>
+          <div id="lzBassHelp" style="font-size:10px;color:var(--muted);font-style:italic"></div>
+        </div>
         <div class="lz-note" id="lzNote">Joue un accord bien résonant...</div>
       </div>
       <button class="lz-add-btn" id="lzAddBtn" onclick="addLiveToProgression()" disabled>
@@ -594,18 +599,28 @@ const VOICINGS = {
   'Fm':     ['F2','C3','F3','Ab3','C4'],
 };
 
-// Chord templates for chromagram matching (pitch classes, C=0)
+// Chord templates (pitch classes C=0). Each entry: [template, rootPC]
+// Having explicit roots lets us disambiguate C vs Am, Em vs G, etc.
 const CHORD_TMPL = {
-  'C':[1,0,0,0,1,0,0,1,0,0,0,0],'D':[0,0,1,0,0,0,1,0,0,1,0,0],
-  'E':[0,0,0,0,1,0,0,0,1,0,0,1],'F':[1,0,0,0,0,1,0,0,0,1,0,0],
-  'G':[0,0,1,0,0,0,0,1,0,0,0,1],'A':[0,1,0,0,1,0,0,0,0,1,0,0],
-  'B':[0,0,0,1,0,0,1,0,0,0,0,1],
-  'Am':[1,0,0,0,1,0,0,0,0,1,0,0],'Em':[0,0,0,0,1,0,0,1,0,0,0,1],
-  'Dm':[0,0,1,0,0,1,0,0,0,1,0,0],'Bm':[0,0,1,0,0,0,1,0,0,0,0,1],
-  'Gm':[0,0,1,1,0,0,0,1,0,0,1,0],'F#m':[0,1,0,0,0,0,1,0,0,1,0,0],
-  'C#m':[0,1,0,0,1,0,0,0,1,0,0,0],'Bb':[0,0,1,0,0,1,0,0,0,0,1,0],
-  'Cm':[0,0,0,1,0,0,0,1,0,0,1,0],'Fm':[1,0,0,0,0,1,1,0,0,0,0,0],
-  'Ab':[1,0,0,0,1,0,0,0,1,0,0,0]
+  'C':  {t:[1,0,0,0,1,0,0,1,0,0,0,0], r:0},
+  'D':  {t:[0,0,1,0,0,0,1,0,0,1,0,0], r:2},
+  'E':  {t:[0,0,0,0,1,0,0,0,1,0,0,1], r:4},
+  'F':  {t:[1,0,0,0,0,1,0,0,0,1,0,0], r:5},
+  'G':  {t:[0,0,1,0,0,0,0,1,0,0,0,1], r:7},
+  'A':  {t:[0,1,0,0,1,0,0,0,0,1,0,0], r:9},
+  'B':  {t:[0,0,0,1,0,0,1,0,0,0,0,1], r:11},
+  'Am': {t:[1,0,0,0,1,0,0,0,0,1,0,0], r:9},  // root=A(9), NOT C(0)
+  'Em': {t:[0,0,0,0,1,0,0,1,0,0,0,1], r:4},
+  'Dm': {t:[0,0,1,0,0,1,0,0,0,1,0,0], r:2},
+  'Bm': {t:[0,0,1,0,0,0,1,0,0,0,0,1], r:11},
+  'Gm': {t:[0,0,1,1,0,0,0,1,0,0,1,0], r:7},
+  'F#m':{t:[0,1,0,0,0,0,1,0,0,1,0,0], r:6},
+  'C#m':{t:[0,1,0,0,1,0,0,0,1,0,0,0], r:1},
+  'Bb': {t:[0,0,1,0,0,1,0,0,0,0,1,0], r:10},
+  'Cm': {t:[0,0,0,1,0,0,0,1,0,0,1,0], r:0},
+  'Fm': {t:[1,0,0,0,0,1,1,0,0,0,0,0], r:5},
+  'Ab': {t:[1,0,0,0,1,0,0,0,1,0,0,0], r:8},
+  'Eb': {t:[0,0,0,1,0,0,0,1,0,0,1,0], r:3},
 };
 
 const DEG_NAMES = {
@@ -1027,20 +1042,36 @@ function stopMic(){
   render(); // revert cards to prog-based
 }
 
+// ── Note names for bass display ──
+const PC_NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+
 function micLoop(){
   if(!S.isMic) return;
 
   const buf=new Float32Array(S.analyser.frequencyBinCount);
   S.analyser.getFloatFrequencyData(buf);
 
-  // Compute RMS from linear amplitudes
+  // RMS energy gate (silence filter)
   let rms=0;
   for(let i=0;i<buf.length;i++) rms+=Math.pow(10,buf[i]/20);
   rms=Math.sqrt(rms/buf.length);
 
   if(rms > RMS_GATE){
-    const chroma=buildChroma(buf);
-    const candidate=matchChord(chroma);
+    // Stage 1: find bass note (guitar low range 60–360 Hz)
+    const bassPC = detectBassPC(buf);
+
+    // Stage 2: build full chromagram (all harmonics, low-weighted)
+    const chroma = buildChroma(buf);
+
+    // Stage 3: match chord constrained by bass root
+    const candidate = matchChord(chroma, bassPC);
+
+    // Show bass note in UI for transparency
+    if(bassPC >= 0){
+      document.getElementById('lzBass').textContent = PC_NAMES[bassPC];
+      document.getElementById('lzBassHelp').textContent =
+        candidate ? `→ filtre : accords sur ${PC_NAMES[bassPC]}` : 'recherche...';
+    }
 
     if(candidate){
       if(candidate===S.liveCandidate){
@@ -1050,18 +1081,15 @@ function micLoop(){
         S.liveConf=1;
       }
 
-      // Update confidence bar (not yet confirmed)
       const pct=Math.round(Math.min(S.liveConf/CONFIRM_THRESH,1)*100);
       updateConfBar(candidate, pct, false);
 
-      // Confirm chord
       if(S.liveConf>=CONFIRM_THRESH && candidate!==S.liveChord){
         S.liveChord=candidate;
-        updateLiveUI(); // update chord display
+        updateLiveUI();
         updateConfBar(candidate, 100, true);
-        renderCardsFrom(candidate); // ← KEY: update suggestion cards in real-time
+        renderCardsFrom(candidate);
 
-        // Auto-add to progression if enabled and not duplicate
         if(document.getElementById('autoAdd').checked
            && candidate!==S.prog[S.prog.length-1]){
           S.prog.push(candidate);
@@ -1070,37 +1098,90 @@ function micLoop(){
       }
     }
   } else {
-    // Silence: slowly decay confidence
+    // Silence
     S.liveConf=Math.max(0, S.liveConf-0.5);
-    if(S.liveConf<1){
-      updateConfBar('', 0, false);
-    }
+    if(S.liveConf<1) updateConfBar('', 0, false);
+    document.getElementById('lzBass').textContent='—';
+    document.getElementById('lzBassHelp').textContent='';
   }
 
-  setTimeout(micLoop, 220);
+  setTimeout(micLoop, 200);
 }
 
+/**
+ * Stage 1 — Bass note detection (60–360 Hz)
+ * Finds the dominant spectral peak in the bass range and returns its pitch class.
+ * This is the most reliable note on guitar (low string resonance).
+ */
+function detectBassPC(fft){
+  const sr=S.audioCtx.sampleRate, fftSz=S.analyser.fftSize;
+  let bestAmp=-Infinity, bestPC=-1;
+
+  for(let i=1;i<fft.length;i++){
+    const fr=i*sr/fftSz;
+    if(fr<60||fr>360) continue;
+    const amp=fft[i]; // dB, higher = louder
+    if(amp>bestAmp){ bestAmp=amp; bestPC=((Math.round(12*Math.log2(fr/440)+69))%12+12)%12; }
+  }
+  // Only trust if signal is strong enough (not just noise floor)
+  return bestAmp > -55 ? bestPC : -1;
+}
+
+/**
+ * Stage 2 — Harmonic-weighted chromagram (80–2600 Hz)
+ * Lower octaves get more weight: they carry the chord root more clearly.
+ * Formula: weight = 1 / (octave - 2), so octave 3 → 1.0, octave 4 → 0.5, octave 5 → 0.33
+ */
 function buildChroma(fft){
   const sr=S.audioCtx.sampleRate, fftSz=S.analyser.fftSize;
   const c=new Array(12).fill(0);
+
   for(let i=1;i<fft.length;i++){
     const fr=i*sr/fftSz;
-    if(fr<60||fr>2800) continue;
+    if(fr<80||fr>2600) continue;
     const amp=Math.pow(10,fft[i]/20);
-    if(amp<0.001) continue;
+    if(amp<0.0008) continue;
+
     const midi=12*Math.log2(fr/440)+69;
     const pc=((Math.round(midi)%12)+12)%12;
-    c[pc]+=amp;
+    const octave=Math.floor(midi/12);
+
+    // Lower octaves weighted more heavily (root-emphasising)
+    const weight=1.0/Math.max(1, octave-2);
+    c[pc]+=amp*weight;
   }
   const mx=Math.max(...c);
   return mx>0 ? c.map(v=>v/mx) : c;
 }
 
-function matchChord(chroma){
-  let best=null, bScore=0.22;
-  for(const [ch,tmpl] of Object.entries(CHORD_TMPL)){
-    const denom=tmpl.reduce((a,b)=>a+b,0);
-    const score=chroma.reduce((s,v,i)=>s+v*tmpl[i],0)/denom;
+/**
+ * Stage 3 — Root-constrained chord matching
+ * Only considers chords whose root matches the detected bass note (±1 semitone).
+ * Within the filtered set, the root pitch class gets 2× bonus in the score.
+ * This definitively separates Am (root=A) from C (root=C) even if they share C/E notes.
+ */
+function matchChord(chroma, bassPC){
+  let best=null, bScore=0.18;
+
+  for(const [ch,entry] of Object.entries(CHORD_TMPL)){
+    const {t:tmpl, r:root}=entry;
+
+    // Bass constraint: reject chords whose root doesn't match detected bass
+    if(bassPC>=0){
+      const dist=Math.min(Math.abs(bassPC-root), 12-Math.abs(bassPC-root));
+      if(dist>1) continue; // not this chord's root
+    }
+
+    // Root-boosted dot product score
+    const ROOT_W=2.0; // root note counts double
+    let score=0, denom=0;
+    for(let i=0;i<12;i++){
+      const w=tmpl[i]*(i===root?ROOT_W:1.0);
+      score+=chroma[i]*w;
+      denom+=w;
+    }
+    score/=denom;
+
     if(score>bScore){ bScore=score; best=ch; }
   }
   return best;
