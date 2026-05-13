@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guitar Progression Builder V15</title>
+<title>Guitar Progression Builder V16</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -248,6 +248,42 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
   transition:all .2s;font-family:'DM Sans',sans-serif}
 .comp-save-btn:hover{opacity:.88;transform:translateY(-1px)}
 
+.lz-pick-btn {
+  padding: 7px 15px;
+  border-radius: 999px;
+  border: 1.5px solid var(--border);
+  background: var(--s2);
+  color: var(--text);
+  cursor: pointer;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all .2s;
+}
+.lz-pick-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+/* Detected suggestion — pulsing highlight */
+.lz-pick-btn.suggested {
+  border-color: var(--dom);
+  background: rgba(226,85,85,.15);
+  color: var(--dom);
+  animation: suggest-pulse 1.2s ease infinite;
+}
+@keyframes suggest-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(226,85,85,.35); }
+  50%      { box-shadow: 0 0 0 6px rgba(226,85,85,0); }
+}
+/* Confirmed / added chord */
+.lz-pick-btn.confirmed {
+  border-color: var(--sub);
+  background: rgba(61,184,138,.18);
+  color: var(--sub);
+  animation: none;
+}
+
 @media(max-width:700px){.cards{grid-template-columns:1fr}.topbar{gap:5px}.loop-bar{gap:7px}}
 </style>
 </head>
@@ -257,7 +293,7 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
 <div id="onboarding">
   <div class="ob-glyph">🎸</div>
   <div class="ob-title">Guitar Progression Builder</div>
-  <div class="ob-sub">Construis des progressions harmoniques, accord par accord — <em>V15</em></div>
+  <div class="ob-sub">Construis des progressions harmoniques, accord par accord — <em>V16</em></div>
 
   <div class="ob-lbl">Style musical</div>
   <div class="ob-styles" id="obStyles"></div>
@@ -301,11 +337,13 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
   <div id="liveZone">
     <div class="lz-top">
       <span class="lz-badge">● Écoute active</span>
-      <span class="lz-hint">Joue un accord — les suggestions se mettent à jour en temps réel</span>
+      <span class="lz-hint">Joue un accord — confirme d'un tap si besoin</span>
       <label class="lz-auto-label">
         <input type="checkbox" class="lz-auto-toggle" id="autoAdd"> Auto-ajout
       </label>
     </div>
+
+    <!-- Detection status row -->
     <div class="lz-body">
       <div class="lz-chord-wrap">
         <div class="lz-chord none" id="lzChord">—</div>
@@ -315,15 +353,24 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
         <div class="lz-conf-label" id="lzConfLabel">Confiance : 0 %</div>
         <div class="lz-bar-track"><div class="lz-bar-fill" id="lzBar"></div></div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:5px">
-          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Note de basse :</div>
+          <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace">Fondamentale :</div>
           <div id="lzBass" style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent);font-weight:600">—</div>
           <div id="lzBassHelp" style="font-size:10px;color:var(--muted);font-style:italic"></div>
         </div>
-        <div class="lz-note" id="lzNote">Joue un accord bien résonant...</div>
+        <div class="lz-note" id="lzNote">Joue un accord bien résonant (laisse résonner 1-2 sec)...</div>
       </div>
       <button class="lz-add-btn" id="lzAddBtn" onclick="addLiveToProgression()" disabled>
         ➕ Ajouter
       </button>
+    </div>
+
+    <!-- Semi-manual chord picker: all chords in key, detected one highlighted -->
+    <div style="margin-top:14px">
+      <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+                  font-family:'DM Mono',monospace;margin-bottom:8px">
+        Accords de la tonalité — tap pour confirmer
+      </div>
+      <div id="lzChordPicker" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
     </div>
   </div>
 
@@ -732,6 +779,7 @@ function launchApp(){
   setTimeout(()=>{ ob.style.display='none'; },650);
   document.getElementById('app').classList.add('on');
   updateTopbar();
+  if(S.isMic) buildChordPicker();
   render();
 }
 
@@ -1021,9 +1069,12 @@ async function startMic(){
     S.analyser.smoothingTimeConstant=0.75;
     src.connect(S.analyser);
     S.isMic=true; S.liveCandidate=null; S.liveConf=0; S.liveChord=null;
+    lastConfirmTime = 0;
+    CHROMA_FRAMES.length = 0;
     document.getElementById('micBtn').classList.add('on');
     document.getElementById('micLabel').textContent='🔴 Écoute...';
     document.getElementById('liveZone').classList.add('show');
+    buildChordPicker();
     updateLiveUI();
     micLoop();
   } catch(err){
@@ -1037,6 +1088,7 @@ function stopMic(){
   if(S.audioCtx) S.audioCtx.close();
   S.audioCtx=null; S.analyser=null; S.stream=null;
   S.liveChord=null; S.liveCandidate=null; S.liveConf=0;
+  CHROMA_FRAMES.length = 0;
   document.getElementById('micBtn').classList.remove('on');
   document.getElementById('micLabel').textContent='🎙 Écoute temps réel';
   document.getElementById('liveZone').classList.remove('show');
@@ -1046,65 +1098,108 @@ function stopMic(){
 // ── Pitch class names ──
 const PC_NAMES = ['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 
-// ── Frame accumulator for chroma averaging ──
+// ── Chroma frame accumulator ──
 const CHROMA_FRAMES = [];
-const N_FRAMES = 5; // average over 5 frames (~1 sec) before matching
+const N_FRAMES = 4;
 
-/**
- * Returns the set of chord names valid in the current key (base chords only).
- * Reduces candidates from 20+ → 6-7, dramatically cutting false positives.
- */
-function getKeyCandidates(){
+// ── Debounce: ignore re-detection for this many ms after a confirm ──
+const DEBOUNCE_MS = 1200;
+let lastConfirmTime = 0;
+
+/** Rebuild the chord picker buttons for the current key */
+function buildChordPicker() {
+  const picker = document.getElementById('lzChordPicker');
+  if (!picker) return;
+  picker.innerHTML = '';
   const kd = KEYS[S.key];
-  if(!kd) return Object.keys(CHORD_TMPL_ALL);
-  // Include all scale chords + their octave equivalents
-  const set = new Set(kd.chords);
-  // Also include any in CHORD_TMPL_ALL that match
-  return Object.keys(CHORD_TMPL_ALL).filter(ch => set.has(ch));
+  if (!kd) return;
+  kd.chords.forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'lz-pick-btn';
+    btn.id = 'pick_' + ch;
+    btn.textContent = ch;
+    btn.onclick = () => manualConfirm(ch);
+    picker.appendChild(btn);
+  });
 }
 
-function micLoop(){
-  if(!S.isMic) return;
+/** User manually taps a chord button — treat as confirmed */
+function manualConfirm(chord) {
+  lastConfirmTime = Date.now();
+  S.liveChord = chord;
+  S.liveConf  = CONFIRM_THRESH + 3;
+  S.liveCandidate = chord;
+  updateLiveUI();
+  updateConfBar(chord, 100, true);
+  highlightPickerBtn(chord, 'confirmed');
+  renderCardsFrom(chord);
+  if (document.getElementById('autoAdd').checked
+      && chord !== S.prog[S.prog.length - 1]) {
+    S.prog.push(chord);
+    renderProg();
+  }
+}
 
-  const buf = new Float32Array(S.analyser.frequencyBinCount);
-  S.analyser.getFloatFrequencyData(buf);
+/** Update visual state of picker buttons */
+function highlightPickerBtn(chord, state) {
+  document.querySelectorAll('.lz-pick-btn').forEach(b => {
+    b.classList.remove('suggested', 'confirmed');
+  });
+  const btn = document.getElementById('pick_' + chord);
+  if (btn) btn.classList.add(state);
+}
 
-  // Energy gate
-  let energy = 0;
-  for(let i = 0; i < buf.length; i++) energy += Math.pow(10, buf[i]/20);
-  energy = Math.sqrt(energy / buf.length);
+function micLoop() {
+  if (!S.isMic) return;
 
-  if(energy > RMS_GATE){
-    // Stage 1 — HPS bass note detection
-    const bassPC = detectBassHPS(buf);
+  // ── Time-domain buffer for YIN ──
+  const timeBuf = new Float32Array(S.analyser.fftSize);
+  S.analyser.getFloatTimeDomainData(timeBuf);
 
-    // Stage 2 — Harmonic-weighted chroma
-    const chroma = buildChroma(buf);
+  // ── Frequency-domain buffer for chromagram ──
+  const freqBuf = new Float32Array(S.analyser.frequencyBinCount);
+  S.analyser.getFloatFrequencyData(freqBuf);
 
-    // Stage 3 — Accumulate frames
-    CHROMA_FRAMES.push(chroma);
-    if(CHROMA_FRAMES.length > N_FRAMES) CHROMA_FRAMES.shift();
+  // Energy gate (RMS on time domain — more accurate)
+  let rms = 0;
+  for (let i = 0; i < timeBuf.length; i++) rms += timeBuf[i] * timeBuf[i];
+  rms = Math.sqrt(rms / timeBuf.length);
 
-    // Average accumulated frames
-    const avgChroma = new Array(12).fill(0);
-    for(const fr of CHROMA_FRAMES)
-      for(let i = 0; i < 12; i++) avgChroma[i] += fr[i];
-    const mx = Math.max(...avgChroma);
-    if(mx > 0) for(let i = 0; i < 12; i++) avgChroma[i] /= mx;
-
-    // Stage 4 — Key-constrained + bass-guided matching
-    const candidate = matchChord(avgChroma, bassPC);
-
-    // Show bass note
-    if(bassPC >= 0){
-      document.getElementById('lzBass').textContent = PC_NAMES[bassPC];
-      document.getElementById('lzBassHelp').textContent =
-        candidate ? `→ filtre tonalité + basse : ${PC_NAMES[bassPC]}` : 'analyse...';
+  if (rms > 0.012) { // ~-38 dBFS gate
+    // Stage 1 — YIN fundamental detection (bass note)
+    const bassFreq = yinDetect(timeBuf, S.audioCtx.sampleRate);
+    let bassPC = -1;
+    if (bassFreq > 0) {
+      const midi = 12 * Math.log2(bassFreq / 440) + 69;
+      bassPC = ((Math.round(midi) % 12) + 12) % 12;
+      document.getElementById('lzBass').textContent =
+        PC_NAMES[bassPC] + ' (' + Math.round(bassFreq) + ' Hz)';
+      document.getElementById('lzBassHelp').textContent = 'YIN';
+    } else {
+      document.getElementById('lzBass').textContent = '—';
+      document.getElementById('lzBassHelp').textContent = '';
     }
 
-    if(candidate){
-      if(candidate === S.liveCandidate){
-        S.liveConf = Math.min(S.liveConf + 1, CONFIRM_THRESH + 3);
+    // Stage 2 — Chromagram (chord quality: maj/min)
+    const chroma = buildChroma(freqBuf);
+    CHROMA_FRAMES.push(chroma);
+    if (CHROMA_FRAMES.length > N_FRAMES) CHROMA_FRAMES.shift();
+
+    const avgChroma = new Array(12).fill(0);
+    for (const fr of CHROMA_FRAMES)
+      for (let i = 0; i < 12; i++) avgChroma[i] += fr[i];
+    const mx = Math.max(...avgChroma);
+    if (mx > 0) for (let i = 0; i < 12; i++) avgChroma[i] /= mx;
+
+    // Stage 3 — Key-constrained matching with bass from YIN
+    const candidate = matchChord(avgChroma, bassPC);
+
+    if (candidate) {
+      // Highlight suggested chord in picker
+      highlightPickerBtn(candidate, 'suggested');
+
+      if (candidate === S.liveCandidate) {
+        S.liveConf = Math.min(S.liveConf + 1, CONFIRM_THRESH + 4);
       } else {
         S.liveCandidate = candidate;
         S.liveConf = 1;
@@ -1113,115 +1208,145 @@ function micLoop(){
       const pct = Math.round(Math.min(S.liveConf / CONFIRM_THRESH, 1) * 100);
       updateConfBar(candidate, pct, false);
 
-      if(S.liveConf >= CONFIRM_THRESH && candidate !== S.liveChord){
+      const now = Date.now();
+      if (S.liveConf >= CONFIRM_THRESH
+          && candidate !== S.liveChord
+          && (now - lastConfirmTime) > DEBOUNCE_MS) {
+        lastConfirmTime = now;
         S.liveChord = candidate;
         updateLiveUI();
         updateConfBar(candidate, 100, true);
+        highlightPickerBtn(candidate, 'confirmed');
         renderCardsFrom(candidate);
-
-        if(document.getElementById('autoAdd').checked
-           && candidate !== S.prog[S.prog.length-1]){
+        if (document.getElementById('autoAdd').checked
+            && candidate !== S.prog[S.prog.length - 1]) {
           S.prog.push(candidate);
           renderProg();
         }
       }
     }
   } else {
-    // Silence — decay, clear frames
-    S.liveConf = Math.max(0, S.liveConf - 0.8);
+    // Silence — decay
+    S.liveConf = Math.max(0, S.liveConf - 1);
     CHROMA_FRAMES.length = 0;
-    if(S.liveConf < 1) updateConfBar('', 0, false);
+    if (S.liveConf < 1) {
+      updateConfBar('', 0, false);
+      document.querySelectorAll('.lz-pick-btn.suggested')
+        .forEach(b => b.classList.remove('suggested'));
+    }
     document.getElementById('lzBass').textContent = '—';
     document.getElementById('lzBassHelp').textContent = '';
   }
 
-  setTimeout(micLoop, 200);
+  setTimeout(micLoop, 180);
 }
 
 /**
- * Bass detection via Harmonic Product Spectrum (HPS).
- * Downsamples the spectrum 3×, multiplies → peaks align on fundamental.
- * Far more reliable than simple peak picking on guitar.
- * Restricted to 60–350 Hz (guitar bass strings E2–F#3).
+ * YIN Algorithm — autocorrelation-based pitch detection.
+ * The standard for monophonic fundamental detection (Cheveigné & Kawahara 2002).
+ * Applied to the full signal; the bass string tends to dominate the autocorrelation
+ * because it has the most energy at the lowest frequency.
+ *
+ * Returns fundamental frequency in Hz, or -1 if not found.
  */
-function detectBassHPS(fft){
-  const sr = S.audioCtx.sampleRate;
-  const N  = S.analyser.fftSize;
-  const binHz = sr / N;
+function yinDetect(buffer, sampleRate) {
+  const minFreq = 60, maxFreq = 380;
+  const tauMin  = Math.floor(sampleRate / maxFreq);
+  const tauMax  = Math.ceil(sampleRate / minFreq);
+  const W       = Math.min(buffer.length, 2048); // analysis window
 
-  // Convert dB → linear amplitude
-  const lin = new Float32Array(fft.length);
-  for(let i = 0; i < fft.length; i++) lin[i] = Math.pow(10, fft[i] / 20);
-
-  // HPS: multiply original × downsample×2 × downsample×3
-  const maxBin = Math.floor(350 / binHz);
-  const minBin = Math.floor(60  / binHz);
-  let bestVal = 0, bestBin = -1;
-
-  for(let i = minBin; i <= maxBin; i++){
-    const hps = lin[i] * (lin[i*2]||0) * (lin[i*3]||0);
-    if(hps > bestVal){ bestVal = hps; bestBin = i; }
+  // Step 1 — Difference function d(tau)
+  const diff = new Float32Array(tauMax);
+  for (let tau = 1; tau < tauMax; tau++) {
+    for (let j = 0; j < W - tauMax; j++) {
+      const delta = buffer[j] - buffer[j + tau];
+      diff[tau] += delta * delta;
+    }
   }
 
-  if(bestBin < 0 || bestVal < 1e-9) return -1;
+  // Step 2 — Cumulative mean normalized difference function
+  const cmnd = new Float32Array(tauMax);
+  cmnd[0] = 1;
+  let runningSum = 0;
+  for (let tau = 1; tau < tauMax; tau++) {
+    runningSum += diff[tau];
+    cmnd[tau] = runningSum > 0 ? (diff[tau] * tau / runningSum) : 1;
+  }
 
-  const freq = bestBin * binHz;
-  const midi = 12 * Math.log2(freq / 440) + 69;
-  return ((Math.round(midi) % 12) + 12) % 12;
+  // Step 3 — Find first dip below threshold
+  const threshold = 0.12; // lower = stricter, fewer false positives
+  let tau = tauMin;
+  let found = false;
+  while (tau < tauMax - 1) {
+    if (cmnd[tau] < threshold) {
+      // Walk to local minimum
+      while (tau + 1 < tauMax && cmnd[tau + 1] < cmnd[tau]) tau++;
+      found = true;
+      break;
+    }
+    tau++;
+  }
+  if (!found) return -1;
+
+  // Step 4 — Parabolic interpolation for sub-sample precision
+  if (tau > 0 && tau < tauMax - 1) {
+    const a = cmnd[tau - 1], b = cmnd[tau], c = cmnd[tau + 1];
+    const denom = a - 2 * b + c;
+    if (Math.abs(denom) > 1e-6) tau += 0.5 * (a - c) / denom;
+  }
+
+  return sampleRate / tau;
 }
 
 /**
  * Harmonic-weighted chromagram.
- * Lower octaves weighted more (they carry the chord root).
+ * Lower octaves get more weight (root-emphasising).
  */
-function buildChroma(fft){
-  const sr  = S.audioCtx.sampleRate;
-  const N   = S.analyser.fftSize;
-  const c   = new Array(12).fill(0);
-
-  for(let i = 1; i < fft.length; i++){
+function buildChroma(fft) {
+  const sr = S.audioCtx.sampleRate, N = S.analyser.fftSize;
+  const c  = new Array(12).fill(0);
+  for (let i = 1; i < fft.length; i++) {
     const fr = i * sr / N;
-    if(fr < 80 || fr > 3000) continue;
+    if (fr < 80 || fr > 3000) continue;
     const amp = Math.pow(10, fft[i] / 20);
-    if(amp < 0.0006) continue;
+    if (amp < 0.0005) continue;
     const midi   = 12 * Math.log2(fr / 440) + 69;
     const pc     = ((Math.round(midi) % 12) + 12) % 12;
     const octave = Math.floor(midi / 12);
-    const weight = 1.0 / Math.max(1, octave - 2); // octave 3→1, 4→0.5, 5→0.33
-    c[pc] += amp * weight;
+    c[pc] += amp / Math.max(1, octave - 2);
   }
   const mx = Math.max(...c);
   return mx > 0 ? c.map(v => v / mx) : c;
 }
 
 /**
- * Root-boosted, key-constrained chord matching.
- *
- * Priority order:
- * 1. Only consider chords in the current key (key constraint)
- * 2. Among those, only ones whose root matches HPS bass (±0 semitones strict)
- * 3. If no bass match found, relax to ±1 semitone
- * 4. Root pitch class counts 2.5× in score
+ * Returns chord names present in the current key.
  */
-function matchChord(chroma, bassPC){
+function getKeyCandidates() {
+  const kd = KEYS[S.key];
+  if (!kd) return Object.keys(CHORD_TMPL_ALL);
+  const set = new Set(kd.chords);
+  return Object.keys(CHORD_TMPL_ALL).filter(ch => set.has(ch));
+}
+
+/**
+ * Key-constrained, root-boosted matching.
+ * Three passes: strict bass → relaxed bass → no bass constraint.
+ */
+function matchChord(chroma, bassPC) {
   const candidates = getKeyCandidates();
+  const ROOT_W = 3.0;
 
-  function score(ch, relaxBass){
+  function scoreChord(ch, maxBassDist) {
     const entry = CHORD_TMPL_ALL[ch];
-    if(!entry) return -1;
-    const {t, r} = entry;
-
-    // Bass filter
-    if(bassPC >= 0){
+    if (!entry) return -1;
+    const { t, r } = entry;
+    if (bassPC >= 0) {
       const dist = Math.min(Math.abs(bassPC - r), 12 - Math.abs(bassPC - r));
-      const maxDist = relaxBass ? 1 : 0;
-      if(dist > maxDist) return -1;
+      if (dist > maxBassDist) return -1;
     }
-
-    // Root-boosted dot product
-    const ROOT_W = 2.5;
     let sc = 0, den = 0;
-    for(let i = 0; i < 12; i++){
+    for (let i = 0; i < 12; i++) {
       const w = t[i] * (i === r ? ROOT_W : 1.0);
       sc  += chroma[i] * w;
       den += w;
@@ -1229,34 +1354,17 @@ function matchChord(chroma, bassPC){
     return sc / den;
   }
 
-  // Pass 1: strict bass match (±0)
-  let best = null, bScore = 0.18;
-  for(const ch of candidates){
-    const s = score(ch, false);
-    if(s > bScore){ bScore = s; best = ch; }
-  }
+  const MIN_SCORE = 0.16;
 
-  // Pass 2: if nothing found, relax bass to ±1
-  if(!best && bassPC >= 0){
-    for(const ch of candidates){
-      const s = score(ch, true);
-      if(s > bScore){ bScore = s; best = ch; }
+  for (const maxDist of [0, 1, 99]) {
+    let best = null, bScore = MIN_SCORE;
+    for (const ch of candidates) {
+      const s = scoreChord(ch, maxDist);
+      if (s > bScore) { bScore = s; best = ch; }
     }
+    if (best) return best;
   }
-
-  // Pass 3: no bass constraint at all (fallback)
-  if(!best){
-    for(const ch of candidates){
-      const entry = CHORD_TMPL_ALL[ch]; if(!entry) continue;
-      const {t, r} = entry;
-      let sc=0, den=0;
-      for(let i=0;i<12;i++){ const w=t[i]*(i===r?2.5:1); sc+=chroma[i]*w; den+=w; }
-      const s=sc/den;
-      if(s>bScore){ bScore=s; best=ch; }
-    }
-  }
-
-  return best;
+  return null;
 }
 
 function updateLiveUI(){
