@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Guitar Progression Builder V16</title>
+<title>Guitar Progression Builder V17</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Playfair+Display:wght@700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -293,7 +293,7 @@ input[type=range]{accent-color:var(--accent);width:80px;cursor:pointer;
 <div id="onboarding">
   <div class="ob-glyph">🎸</div>
   <div class="ob-title">Guitar Progression Builder</div>
-  <div class="ob-sub">Construis des progressions harmoniques, accord par accord — <em>V16</em></div>
+  <div class="ob-sub">Construis des progressions harmoniques, accord par accord — <em>V17</em></div>
 
   <div class="ob-lbl">Style musical</div>
   <div class="ob-styles" id="obStyles"></div>
@@ -1213,14 +1213,16 @@ function micLoop() {
           && candidate !== S.liveChord
           && (now - lastConfirmTime) > DEBOUNCE_MS) {
         lastConfirmTime = now;
-        S.liveChord = candidate;
+        // Try upgrading to 7th variant if signal warrants it
+        const confirmed = maybeUpgradeTo7(candidate, avgChroma);
+        S.liveChord = confirmed;
         updateLiveUI();
-        updateConfBar(candidate, 100, true);
-        highlightPickerBtn(candidate, 'confirmed');
-        renderCardsFrom(candidate);
+        updateConfBar(confirmed, 100, true);
+        highlightPickerBtn(candidate, 'confirmed'); // highlight base chord btn
+        renderCardsFrom(confirmed);
         if (document.getElementById('autoAdd').checked
-            && candidate !== S.prog[S.prog.length - 1]) {
-          S.prog.push(candidate);
+            && confirmed !== S.prog[S.prog.length - 1]) {
+          S.prog.push(confirmed);
           renderProg();
         }
       }
@@ -1330,41 +1332,84 @@ function getKeyCandidates() {
 }
 
 /**
- * Key-constrained, root-boosted matching.
- * Three passes: strict bass → relaxed bass → no bass constraint.
+ * CHROMAGRAM-FIRST matching — fixes B vs E confusion.
+ *
+ * Strategy:
+ *  1. Score ALL key candidates purely on chromagram (no bass filter).
+ *     This ensures E major beats B major when playing E chord, because
+ *     E's template (E,G#,B) matches the signal — B major needs D# and F#
+ *     which are absent.
+ *  2. Keep top-2 candidates. If their scores differ by > 15%, take the best.
+ *  3. If scores are close (ambiguous pair like Am/C), use bass note as tiebreaker.
+ *
+ * Result: octave errors from YIN can no longer override a clear chromagram winner.
  */
 function matchChord(chroma, bassPC) {
   const candidates = getKeyCandidates();
-  const ROOT_W = 3.0;
+  const ROOT_W = 2.5;
 
-  function scoreChord(ch, maxBassDist) {
+  // Score every candidate on chromagram alone
+  const scored = candidates.map(ch => {
     const entry = CHORD_TMPL_ALL[ch];
-    if (!entry) return -1;
+    if (!entry) return { ch, s: -1 };
     const { t, r } = entry;
-    if (bassPC >= 0) {
-      const dist = Math.min(Math.abs(bassPC - r), 12 - Math.abs(bassPC - r));
-      if (dist > maxBassDist) return -1;
-    }
     let sc = 0, den = 0;
     for (let i = 0; i < 12; i++) {
       const w = t[i] * (i === r ? ROOT_W : 1.0);
       sc  += chroma[i] * w;
       den += w;
     }
-    return sc / den;
+    return { ch, s: sc / den, r };
+  }).filter(x => x.s > 0.12).sort((a, b) => b.s - a.s);
+
+  if (!scored.length) return null;
+
+  const best  = scored[0];
+  const runnerUp = scored[1];
+
+  // If clear winner (>15% gap) → return it directly, ignore bass
+  if (!runnerUp || (best.s - runnerUp.s) / best.s > 0.15) {
+    return best.ch;
   }
 
-  const MIN_SCORE = 0.16;
-
-  for (const maxDist of [0, 1, 99]) {
-    let best = null, bScore = MIN_SCORE;
-    for (const ch of candidates) {
-      const s = scoreChord(ch, maxDist);
-      if (s > bScore) { bScore = s; best = ch; }
-    }
-    if (best) return best;
+  // Ambiguous: use bass note to break tie
+  if (bassPC >= 0) {
+    // Prefer whichever root is closer to detected bass
+    const distBest   = Math.min(Math.abs(bassPC - best.r),   12 - Math.abs(bassPC - best.r));
+    const distRunner = Math.min(Math.abs(bassPC - runnerUp.r), 12 - Math.abs(bassPC - runnerUp.r));
+    if (distRunner < distBest) return runnerUp.ch;
   }
-  return null;
+
+  return best.ch;
+}
+
+/**
+ * 7th upgrade: after base chord is confirmed, check if the b7 note
+ * is prominent in the chromagram. If yes (and style warrants it), upgrade
+ * "A" → "A7", "G" → "G7", etc.
+ *
+ * b7 interval = 10 semitones above root.
+ * Only applies in blues, jazz, soul, rock styles.
+ */
+function maybeUpgradeTo7(baseChord, chroma) {
+  const SEVENTH_STYLES = ['blues', 'jazz', 'soul', 'rock'];
+  if (!SEVENTH_STYLES.includes(S.style)) return baseChord;
+  if (S.level === 'beginner') return baseChord;
+
+  const entry = CHORD_TMPL_ALL[baseChord];
+  if (!entry) return baseChord;
+
+  const b7PC = (entry.r + 10) % 12; // minor 7th above root
+  const b7Strength = chroma[b7PC];
+
+  // Only upgrade if b7 is clearly present (> 0.45 of max)
+  if (b7Strength < 0.45) return baseChord;
+
+  // Check the 7th voicing exists in DIAGRAMS
+  const candidate7 = baseChord + '7';
+  if (DIAGRAMS[candidate7] || VOICINGS[candidate7]) return candidate7;
+
+  return baseChord;
 }
 
 function updateLiveUI(){
