@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#263238">
+  <title>Lecteur EPUB vocal</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/epubjs/dist/epub.min.js"></script>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; background: #f4f1eb; color: #1f2933; }
+    header { padding: 24px 18px; background: #263238; color: white; }
+    header h1 { margin: 0 0 6px; font-size: 1.55rem; }
+    header p { margin: 0; opacity: .85; }
+    main { max-width: 960px; margin: 0 auto; padding: 18px; display: grid; gap: 16px; }
+    section { background: white; border-radius: 16px; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,.07); }
+    h2 { margin: 0 0 12px; font-size: 1.15rem; }
+    label { display: block; font-weight: 650; margin-bottom: 6px; }
+    input, select, button { font: inherit; }
+    input[type=file], select, input[type=range] { width: 100%; box-sizing: border-box; }
+    button { border: 0; border-radius: 12px; padding: 10px 14px; background: #263238; color: white; cursor: pointer; }
+    button.secondary { background: #607d8b; }
+    button.danger { background: #7f1d1d; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .muted { color: #64748b; font-size: .92rem; }
+    .status { min-height: 24px; padding: 10px 12px; border-radius: 12px; background: #f1f5f9; }
+    .chapter-text { white-space: pre-wrap; line-height: 1.65; max-height: 45vh; overflow: auto; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 12px; padding: 14px; }
+    progress { width: 100%; height: 18px; }
+    .small { font-size: .85rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Lecteur EPUB vocal</h1>
+    <p>Importe un EPUB non protégé et écoute-le avec la synthèse vocale du navigateur.</p>
+  </header>
+
+  <main>
+    <section>
+      <h2>1. Ajouter un livre</h2>
+      <input id="fileInput" type="file" accept=".epub,application/epub+zip">
+      <p class="muted">Le fichier reste dans ton navigateur. Les EPUB protégés par DRM ne sont pas pris en charge.</p>
+      <div id="status" class="status">Aucun livre chargé.</div>
+    </section>
+
+    <section>
+      <h2>2. Lecture</h2>
+      <div class="grid">
+        <div>
+          <label for="chapterSelect">Chapitre</label>
+          <select id="chapterSelect" disabled></select>
+        </div>
+        <div>
+          <label for="voiceSelect">Voix</label>
+          <select id="voiceSelect"></select>
+        </div>
+        <div>
+          <label for="rateRange">Vitesse : <span id="rateValue">1.0</span>x</label>
+          <input id="rateRange" type="range" min="0.6" max="1.8" step="0.1" value="1">
+        </div>
+      </div>
+      <p class="small muted" id="bookInfo"></p>
+      <div class="row">
+        <button id="prevBtn" disabled>Chapitre précédent</button>
+        <button id="playBtn" disabled>Lire</button>
+        <button id="pauseBtn" disabled class="secondary">Pause</button>
+        <button id="resumeBtn" disabled class="secondary">Reprendre</button>
+        <button id="stopBtn" disabled class="danger">Stop</button>
+        <button id="nextBtn" disabled>Chapitre suivant</button>
+      </div>
+      <p></p>
+      <progress id="progressBar" max="100" value="0"></progress>
+      <p id="progressText" class="muted">Progression : 0 %</p>
+    </section>
+
+    <section>
+      <h2>Texte extrait</h2>
+      <div id="chapterText" class="chapter-text">Le texte du chapitre apparaîtra ici.</div>
+    </section>
+  </main>
+
+  <script>
+    const fileInput = document.querySelector('#fileInput');
+    const statusEl = document.querySelector('#status');
+    const chapterSelect = document.querySelector('#chapterSelect');
+    const voiceSelect = document.querySelector('#voiceSelect');
+    const rateRange = document.querySelector('#rateRange');
+    const rateValue = document.querySelector('#rateValue');
+    const bookInfo = document.querySelector('#bookInfo');
+    const chapterText = document.querySelector('#chapterText');
+    const progressBar = document.querySelector('#progressBar');
+    const progressText = document.querySelector('#progressText');
+    const prevBtn = document.querySelector('#prevBtn');
+    const playBtn = document.querySelector('#playBtn');
+    const pauseBtn = document.querySelector('#pauseBtn');
+    const resumeBtn = document.querySelector('#resumeBtn');
+    const stopBtn = document.querySelector('#stopBtn');
+    const nextBtn = document.querySelector('#nextBtn');
+
+    let book = null;
+    let chapters = [];
+    let currentChapterIndex = Number(localStorage.getItem('epubVoiceReader.chapter') || 0);
+    let chunks = [];
+    let currentChunkIndex = Number(localStorage.getItem('epubVoiceReader.chunk') || 0);
+    let voices = [];
+    let isReading = false;
+
+    function setStatus(message) { statusEl.textContent = message; }
+
+    function cleanText(value) {
+      return (value || '')
+        .replace(/\s+/g, ' ')
+        .replace(/\u00a0/g, ' ')
+        .trim();
+    }
+
+    function splitText(text, size = 850) {
+      const sentences = text.match(/[^.!?;:]+[.!?;:]?|.+$/g) || [text];
+      const result = [];
+      let current = '';
+      for (const sentence of sentences) {
+        if ((current + sentence).length > size && current.trim()) {
+          result.push(current.trim());
+          current = sentence;
+        } else {
+          current += ' ' + sentence;
+        }
+      }
+      if (current.trim()) result.push(current.trim());
+      return result;
+    }
+
+    function loadVoices() {
+      voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = '';
+      voices.forEach((voice, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = `${voice.name} (${voice.lang})`;
+        if (voice.lang.toLowerCase().startsWith('fr')) option.selected = true;
+        voiceSelect.appendChild(option);
+      });
+      const savedVoice = localStorage.getItem('epubVoiceReader.voice');
+      if (savedVoice && voices[Number(savedVoice)]) voiceSelect.value = savedVoice;
+    }
+
+    speechSynthesis.onvoiceschanged = loadVoices;
+    loadVoices();
+
+    async function extractChapter(section) {
+      const item = await section.load(book.load.bind(book));
+      const doc = item.ownerDocument || item;
+      const text = cleanText(doc.body ? doc.body.innerText : doc.textContent);
+      section.unload();
+      return text;
+    }
+
+    async function openBook(file) {
+      if (!window.ePub) {
+        setStatus('Erreur : epub.js n’est pas chargé. Vérifie ta connexion internet au premier lancement.');
+        return;
+      }
+
+      stopReading();
+      setStatus('Chargement du livre en cours...');
+      const buffer = await file.arrayBuffer();
+      book = ePub(buffer);
+      await book.ready;
+      const metadata = await book.loaded.metadata.catch(() => ({}));
+      await book.loaded.spine;
+
+      chapters = [];
+      const nav = await book.loaded.navigation.catch(() => null);
+      const toc = nav && nav.toc && nav.toc.length ? nav.toc : [];
+
+      if (toc.length) {
+        for (const item of toc) {
+          const href = item.href ? item.href.split('#')[0] : '';
+          const section = book.spine.get(href);
+          if (section) chapters.push({ label: item.label || 'Chapitre', section });
+        }
+      }
+
+      if (!chapters.length) {
+        book.spine.each(section => chapters.push({ label: section.idref || `Chapitre ${chapters.length + 1}`, section }));
+      }
+
+      chapterSelect.innerHTML = '';
+      chapters.forEach((chapter, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = chapter.label || `Chapitre ${index + 1}`;
+        chapterSelect.appendChild(option);
+      });
+
+      currentChapterIndex = Math.min(currentChapterIndex, Math.max(chapters.length - 1, 0));
+      chapterSelect.value = String(currentChapterIndex);
+      chapterSelect.disabled = false;
+      bookInfo.textContent = `${metadata.title || file.name} · ${chapters.length} chapitre(s)`;
+      enableButtons(true);
+      await loadChapter(currentChapterIndex, currentChunkIndex);
+      setStatus('Livre chargé. Tu peux lancer la lecture.');
+    }
+
+    async function loadChapter(index, chunkIndex = 0) {
+      if (!book || !chapters[index]) return;
+      stopReading(false);
+      currentChapterIndex = index;
+      localStorage.setItem('epubVoiceReader.chapter', String(index));
+      chapterSelect.value = String(index);
+      setStatus('Extraction du chapitre...');
+      const text = await extractChapter(chapters[index].section);
+      chapterText.textContent = text || 'Aucun texte détecté dans ce chapitre.';
+      chunks = splitText(text || '');
+      currentChunkIndex = Math.min(chunkIndex, Math.max(chunks.length - 1, 0));
+      localStorage.setItem('epubVoiceReader.chunk', String(currentChunkIndex));
+      updateProgress();
+      setStatus(`Chapitre prêt : ${chapters[index].label || 'chapitre'}`);
+    }
+
+    function enableButtons(enabled) {
+      playBtn.disabled = !enabled;
+      pauseBtn.disabled = !enabled;
+      resumeBtn.disabled = !enabled;
+      stopBtn.disabled = !enabled;
+      prevBtn.disabled = !enabled;
+      nextBtn.disabled = !enabled;
+    }
+
+    function updateProgress() {
+      const value = chunks.length ? Math.round((currentChunkIndex / chunks.length) * 100) : 0;
+      progressBar.value = value;
+      progressText.textContent = `Progression : ${value} % (${currentChunkIndex + 1}/${Math.max(chunks.length, 1)})`;
+    }
+
+    function speakCurrentChunk() {
+      if (!chunks[currentChunkIndex]) {
+        goNextChapter();
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(chunks[currentChunkIndex]);
+      const selectedVoice = voices[Number(voiceSelect.value)];
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.rate = Number(rateRange.value || 1);
+      utterance.lang = selectedVoice ? selectedVoice.lang : 'fr-FR';
+      utterance.onend = () => {
+        if (!isReading) return;
+        currentChunkIndex += 1;
+        localStorage.setItem('epubVoiceReader.chunk', String(currentChunkIndex));
+        updateProgress();
+        if (currentChunkIndex < chunks.length) speakCurrentChunk();
+        else goNextChapter();
+      };
+      utterance.onerror = () => setStatus('Erreur pendant la lecture vocale.');
+      speechSynthesis.speak(utterance);
+      updateProgress();
+      setStatus('Lecture en cours...');
+    }
+
+    function startReading() {
+      if (!chunks.length) return;
+      speechSynthesis.cancel();
+      isReading = true;
+      speakCurrentChunk();
+    }
+
+    function stopReading(reset = true) {
+      isReading = false;
+      speechSynthesis.cancel();
+      if (reset) {
+        currentChunkIndex = 0;
+        localStorage.setItem('epubVoiceReader.chunk', '0');
+        updateProgress();
+      }
+    }
+
+    async function goNextChapter() {
+      if (currentChapterIndex + 1 < chapters.length) {
+        await loadChapter(currentChapterIndex + 1, 0);
+        if (isReading) startReading();
+      } else {
+        isReading = false;
+        setStatus('Fin du livre ou du dernier chapitre chargé.');
+      }
+    }
+
+    async function goPreviousChapter() {
+      if (currentChapterIndex > 0) await loadChapter(currentChapterIndex - 1, 0);
+    }
+
+    fileInput.addEventListener('change', async event => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (!file.name.toLowerCase().endsWith('.epub')) {
+        setStatus('Choisis un fichier EPUB.');
+        return;
+      }
+      try { await openBook(file); }
+      catch (error) {
+        console.error(error);
+        setStatus('Impossible de lire cet EPUB. Il est peut-être protégé ou mal formé.');
+      }
+    });
+
+    chapterSelect.addEventListener('change', event => loadChapter(Number(event.target.value), 0));
+    voiceSelect.addEventListener('change', event => localStorage.setItem('epubVoiceReader.voice', event.target.value));
+    rateRange.addEventListener('input', () => { rateValue.textContent = Number(rateRange.value).toFixed(1); });
+    rateRange.addEventListener('change', () => localStorage.setItem('epubVoiceReader.rate', rateRange.value));
+
+    playBtn.addEventListener('click', startReading);
+    pauseBtn.addEventListener('click', () => { speechSynthesis.pause(); setStatus('Lecture en pause.'); });
+    resumeBtn.addEventListener('click', () => { speechSynthesis.resume(); setStatus('Lecture reprise.'); });
+    stopBtn.addEventListener('click', () => { stopReading(); setStatus('Lecture arrêtée.'); });
+    nextBtn.addEventListener('click', () => goNextChapter());
+    prevBtn.addEventListener('click', () => goPreviousChapter());
+
+    const savedRate = localStorage.getItem('epubVoiceReader.rate');
+    if (savedRate) { rateRange.value = savedRate; rateValue.textContent = Number(savedRate).toFixed(1); }
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
